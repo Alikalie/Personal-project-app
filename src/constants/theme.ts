@@ -1,8 +1,3 @@
-/**
- * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
- * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://unistyl.es/), etc.
- */
-
 import '@/global.css';
 
 import { Platform } from 'react-native';
@@ -14,6 +9,14 @@ export const Colors = {
     backgroundElement: '#F0F0F3',
     backgroundSelected: '#E0E1E6',
     textSecondary: '#60646C',
+    primary: '#208AEF',
+    primaryDark: '#0F5CC1',
+    primaryLight: '#EAF5FF',
+    border: '#DCE3EE',
+    danger: '#D94E4E',
+    warning: '#E29D1E',
+    success: '#2FA76A',
+    white: '#FFFFFF',
   },
   dark: {
     text: '#ffffff',
@@ -21,6 +24,14 @@ export const Colors = {
     backgroundElement: '#212225',
     backgroundSelected: '#2E3135',
     textSecondary: '#B0B4BA',
+    primary: '#208AEF',
+    primaryDark: '#0F5CC1',
+    primaryLight: '#EAF5FF',
+    border: '#DCE3EE',
+    danger: '#D94E4E',
+    warning: '#E29D1E',
+    success: '#2FA76A',
+    white: '#FFFFFF',
   },
 } as const;
 
@@ -28,13 +39,9 @@ export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;
 
 export const Fonts = Platform.select({
   ios: {
-    /** iOS `UIFontDescriptorSystemDesignDefault` */
     sans: 'system-ui',
-    /** iOS `UIFontDescriptorSystemDesignSerif` */
     serif: 'ui-serif',
-    /** iOS `UIFontDescriptorSystemDesignRounded` */
     rounded: 'ui-rounded',
-    /** iOS `UIFontDescriptorSystemDesignMonospaced` */
     mono: 'ui-monospace',
   },
   default: {
@@ -63,3 +70,32 @@ export const Spacing = {
 
 export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;
 export const MaxContentWidth = 800;
+
+export const colors = {
+  primary: '#208AEF',
+  primaryDark: '#0F5CC1',
+  primaryLight: '#EAF5FF',
+  text: '#1B2430',
+  textSecondary: '#5E6A7B',
+  background: '#F4F7FB',
+  white: '#FFFFFF',
+  border: '#DCE3EE',
+  danger: '#D94E4E',
+  warning: '#E29D1E',
+  success: '#2FA76A',
+};
+
+export const radius = {
+  sm: 10,
+  md: 14,
+  lg: 18,
+  xl: 24,
+};
+
+export const shadow = {
+  shadowColor: '#0B1320',
+  shadowOffset: { width: 0, height: 6 },
+  shadowOpacity: 0.08,
+  shadowRadius: 14,
+  elevation: 3,
+};
