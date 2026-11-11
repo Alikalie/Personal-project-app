@@ -22,9 +22,9 @@ export default function Welcome() {
           contentFit="contain"
           accessibilityLabel="SML business logo"
         />
-        <Text style={styles.title}>Manage sales, stock and customer credit in one place.</Text>
+        <Text style={styles.title}>Sell, track stock, and manage customers.</Text>
         <Text style={styles.subtitle}>
-          Track daily business performance and keep your shop organised from one easy dashboard.
+          Keep your shop organised from one simple dashboard.
         </Text>
       </View>
     </Screen>
@@ -32,21 +32,21 @@ export default function Welcome() {
 }
 
 const styles = StyleSheet.create({
-  hero: { marginTop: 28, alignItems: 'center' },
-  logo: { width: '100%', maxWidth: 340, height: 188 },
+  hero: { marginTop: 20, alignItems: 'center' },
+  logo: { width: '100%', maxWidth: 300, height: 168 },
   title: {
-    fontSize: 32,
-    lineHeight: 40,
+    fontSize: 26,
+    lineHeight: 34,
     fontWeight: '800',
     color: colors.text,
     textAlign: 'center',
-    letterSpacing: -0.8,
-    marginTop: 20,
+    letterSpacing: -0.4,
+    marginTop: 16,
   },
   subtitle: {
     marginTop: 12,
-    fontSize: 16,
-    lineHeight: 24,
+    fontSize: 15,
+    lineHeight: 22,
     textAlign: 'center',
     color: colors.textSecondary,
   },

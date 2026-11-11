@@ -1,8 +1,22 @@
 import { Tabs } from 'expo-router';
 import { Home, Menu, Package, ShoppingCart, Users } from 'lucide-react-native';
+import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { colors } from '@/constants/theme';
+
+function TabIcon({ icon: Icon, focused }: {
+  icon: typeof Home;
+  focused: boolean;
+}) {
+  const color = focused ? colors.primary : colors.textSecondary;
+  return (
+    <View style={styles.iconWrap} accessible={false}>
+      <Icon size={24} color={color} strokeWidth={focused ? 2.8 : 2} />
+      <View style={[styles.indicator, focused && styles.indicatorActive]} />
+    </View>
+  );
+}
 
 export default function TabsLayout() {
   const insets = useSafeAreaInsets();
@@ -13,10 +27,11 @@ export default function TabsLayout() {
         headerShown: false,
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textSecondary,
-        tabBarLabelStyle: { fontSize: 11, fontWeight: '700', marginBottom: 4 },
+        tabBarLabelStyle: { fontSize: 12, fontWeight: '700', marginBottom: 3 },
+        tabBarItemStyle: { minHeight: 58, paddingTop: 2 },
         tabBarStyle: {
-          height: 62 + insets.bottom,
-          paddingTop: 8,
+          height: 64 + insets.bottom,
+          paddingTop: 5,
           paddingBottom: insets.bottom,
           backgroundColor: colors.white,
           borderTopColor: colors.border,
@@ -24,11 +39,17 @@ export default function TabsLayout() {
         },
       }}
     >
-      <Tabs.Screen name="index" options={{ title: 'Home', tabBarIcon: ({ color, focused }) => <Home size={22} color={color} strokeWidth={focused ? 2.6 : 2} /> }} />
-      <Tabs.Screen name="sales" options={{ title: 'Sales', tabBarIcon: ({ color, focused }) => <ShoppingCart size={22} color={color} strokeWidth={focused ? 2.6 : 2} /> }} />
-      <Tabs.Screen name="stock" options={{ title: 'Stock', tabBarIcon: ({ color, focused }) => <Package size={22} color={color} strokeWidth={focused ? 2.6 : 2} /> }} />
-      <Tabs.Screen name="customers" options={{ title: 'Customers', tabBarIcon: ({ color, focused }) => <Users size={22} color={color} strokeWidth={focused ? 2.6 : 2} /> }} />
-      <Tabs.Screen name="more" options={{ title: 'More', tabBarIcon: ({ color, focused }) => <Menu size={22} color={color} strokeWidth={focused ? 2.6 : 2} /> }} />
+      <Tabs.Screen name="index" options={{ title: 'Home', tabBarAccessibilityLabel: 'Home tab', tabBarIcon: ({ focused }) => <TabIcon icon={Home} focused={focused} /> }} />
+      <Tabs.Screen name="sales" options={{ title: 'Sales', tabBarAccessibilityLabel: 'Sales tab', tabBarIcon: ({ focused }) => <TabIcon icon={ShoppingCart} focused={focused} /> }} />
+      <Tabs.Screen name="stock" options={{ title: 'Stock', tabBarAccessibilityLabel: 'Stock tab', tabBarIcon: ({ focused }) => <TabIcon icon={Package} focused={focused} /> }} />
+      <Tabs.Screen name="customers" options={{ title: 'Customers', tabBarAccessibilityLabel: 'Customers tab', tabBarIcon: ({ focused }) => <TabIcon icon={Users} focused={focused} /> }} />
+      <Tabs.Screen name="more" options={{ title: 'More', tabBarAccessibilityLabel: 'More tab', tabBarIcon: ({ focused }) => <TabIcon icon={Menu} focused={focused} /> }} />
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  iconWrap: { height: 31, alignItems: 'center', justifyContent: 'flex-start' },
+  indicator: { width: 14, height: 3, marginTop: 3, borderRadius: 2, backgroundColor: 'transparent' },
+  indicatorActive: { backgroundColor: colors.primary },
+});

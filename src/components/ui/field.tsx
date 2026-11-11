@@ -1,16 +1,15 @@
-import { Text, TextInput, View, StyleSheet } from 'react-native';
+import { useState } from 'react';
+import { Pressable, Text, TextInput, View, StyleSheet, type TextInputProps } from 'react-native';
 import type { LucideIcon } from 'lucide-react-native';
+import { Eye, EyeOff } from 'lucide-react-native';
 
 import { colors } from '@/constants/theme';
 
-type FieldProps = {
+type FieldProps = Omit<TextInputProps, 'value' | 'onChangeText' | 'secureTextEntry'> & {
   label: string;
   icon?: LucideIcon;
   value: string;
   onChangeText: (text: string) => void;
-  placeholder?: string;
-  keyboardType?: 'default' | 'email-address' | 'phone-pad';
-  autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
   secure?: boolean;
   error?: string;
 };
@@ -25,7 +24,9 @@ export default function Field({
   autoCapitalize = 'sentences',
   secure = false,
   error,
+  ...inputProps
 }: FieldProps) {
+  const [visible, setVisible] = useState(false);
   return (
     <View style={styles.wrap}>
       <Text style={styles.label}>{label}</Text>
@@ -36,23 +37,35 @@ export default function Field({
           </View>
         ) : null}
         <TextInput
+          {...inputProps}
           value={value}
           onChangeText={onChangeText}
           placeholder={placeholder}
           placeholderTextColor={colors.textSecondary}
           keyboardType={keyboardType}
           autoCapitalize={autoCapitalize}
-          secureTextEntry={secure}
+          secureTextEntry={secure && !visible}
+          accessibilityLabel={label}
           style={styles.input}
         />
+        {secure ? (
+          <Pressable
+            onPress={() => setVisible((current) => !current)}
+            style={styles.visibilityButton}
+            accessibilityRole="button"
+            accessibilityLabel={visible ? `Hide ${label.toLowerCase()}` : `Show ${label.toLowerCase()}`}
+          >
+            {visible ? <EyeOff size={20} color={colors.textSecondary} /> : <Eye size={20} color={colors.textSecondary} />}
+          </Pressable>
+        ) : null}
       </View>
-      {!!error ? <Text style={styles.error}>{error}</Text> : null}
+      {!!error ? <Text style={styles.error} accessibilityRole="alert">{error}</Text> : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  wrap: { marginBottom: 18 },
+  wrap: { marginBottom: 16 },
   label: { fontSize: 13, fontWeight: '600', color: colors.text, marginBottom: 8 },
   inputRow: {
     backgroundColor: colors.white,
@@ -60,7 +73,8 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     borderRadius: 14,
     paddingHorizontal: 12,
-    paddingVertical: 12,
+    minHeight: 52,
+    paddingVertical: 8,
     flexDirection: 'row',
     alignItems: 'center',
   },
@@ -72,5 +86,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     paddingVertical: 0,
   },
+  visibilityButton: { width: 48, minHeight: 48, alignItems: 'center', justifyContent: 'center', marginRight: -8 },
   error: { marginTop: 6, color: colors.danger, fontSize: 12 },
 });

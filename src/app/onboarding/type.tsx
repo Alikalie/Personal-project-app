@@ -31,15 +31,15 @@ export default function BusinessType() {
       footer={<Button label="Continue" onPress={next} disabled={!selected} />}
     >
       <StepDots step={2} />
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 12 }}>
         {types.map(({ label, icon: Icon }) => {
           const active = selected === label;
           return (
             <Pressable key={label} onPress={() => setSelected(label)} style={{
-              width: '47.8%', paddingVertical: 20, alignItems: 'center', borderRadius: radius.lg,
+              width: '48%', minHeight: 112, paddingVertical: 16, alignItems: 'center', justifyContent: 'center', borderRadius: radius.lg,
               borderWidth: 1.5, borderColor: active ? colors.primary : colors.border,
               backgroundColor: active ? colors.primaryLight : colors.white,
-            }}>
+            }} accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ selected: active }}>
               <Icon size={28} color={active ? colors.primary : colors.textSecondary} />
               <Text style={{ marginTop: 10, fontSize: 14, fontWeight: '700', color: active ? colors.primaryDark : colors.text }}>{label}</Text>
             </Pressable>

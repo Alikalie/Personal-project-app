@@ -1,16 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
-import { Animated, Easing, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
-import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { colors } from '../constants/theme';
 import { useAuth } from '../components/AuthProvider';
 import { routeFor } from '../services/authService';
 
-SplashScreen.preventAutoHideAsync().catch(() => {});
-
 export default function Splash() {
-  const { loading, ctx } = useAuth();
+  const { loading, error, ctx, refresh } = useAuth();
   const [animDone, setAnimDone] = useState(false);
 
   const logoOpacity = useRef(new Animated.Value(0)).current;
@@ -22,7 +19,6 @@ export default function Splash() {
   const progress = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    SplashScreen.hideAsync().catch(() => {});
     Animated.parallel([
       Animated.parallel([
         Animated.timing(logoOpacity, { toValue: 1, duration: 650, useNativeDriver: true }),
@@ -39,13 +35,13 @@ export default function Splash() {
       Animated.sequence([Animated.delay(900), Animated.timing(footerOpacity, { toValue: 1, duration: 500, useNativeDriver: true })]),
       Animated.timing(progress, { toValue: 1, duration: 2300, easing: Easing.out(Easing.cubic), useNativeDriver: false }),
     ]).start();
-    const t = setTimeout(() => setAnimDone(true), 2600);
+    const t = setTimeout(() => setAnimDone(true), 1600);
     return () => clearTimeout(t);
   }, []);
 
   useEffect(() => {
-    if (animDone && !loading) router.replace(routeFor(ctx) as never);
-  }, [animDone, loading, ctx]);
+    if (animDone && !loading && !error) router.replace(routeFor(ctx));
+  }, [animDone, loading, error, ctx]);
 
   const barWidth = progress.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] });
 
@@ -78,6 +74,20 @@ export default function Splash() {
         </View>
         <Text style={s.small}>Built for Sierra Leone businesses</Text>
       </Animated.View>
+
+      {loading ? (
+        <View style={s.sessionState}>
+          <ActivityIndicator size="small" color={colors.primary} />
+          <Text style={s.sessionText}>Checking your session...</Text>
+        </View>
+      ) : error ? (
+        <View style={s.sessionState}>
+          <Text style={s.sessionError}>{error}</Text>
+          <Pressable onPress={() => void refresh().catch(() => undefined)} accessibilityRole="button">
+            <Text style={s.retry}>Try again</Text>
+          </Pressable>
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -90,8 +100,12 @@ const s = StyleSheet.create({
   name: { marginTop: 4, fontSize: 26, fontWeight: '800', color: colors.primaryDark, letterSpacing: -0.4 },
   nameAccent: { color: colors.primary },
   tagline: { marginTop: 8, fontSize: 14, color: colors.textSecondary, letterSpacing: 0.4 },
-  footer: { position: 'absolute', bottom: 56, alignItems: 'center', width: '100%' },
+  footer: { position: 'absolute', bottom: 32, alignItems: 'center', width: '100%' },
   track: { width: 132, height: 4, borderRadius: 2, backgroundColor: colors.primaryLight, overflow: 'hidden' },
   bar: { height: 4, backgroundColor: colors.primary, borderRadius: 2 },
   small: { marginTop: 14, fontSize: 12, color: colors.textSecondary, letterSpacing: 0.3 },
+  sessionState: { position: 'absolute', bottom: 92, alignItems: 'center', paddingHorizontal: 24 },
+  sessionText: { marginTop: 6, color: colors.textSecondary, fontSize: 12 },
+  sessionError: { color: colors.danger, fontSize: 12, textAlign: 'center' },
+  retry: { color: colors.primary, fontWeight: '700', marginTop: 6 },
 });

@@ -1,8 +1,19 @@
 export const onboarding = {
-  businessName: 'Aminata Fashion Store',
-  ownerName: 'Aminata Kamara',
+  businessName: '',
+  ownerName: '',
   businessType: '',
   address: '',
   phone: '',
-  district: 'Western Area Urban',
+  district: '',
 };
+
+export function clearOnboarding() {
+  Object.assign(onboarding, {
+    businessName: '',
+    ownerName: '',
+    businessType: '',
+    address: '',
+    phone: '',
+    district: '',
+  });
+}

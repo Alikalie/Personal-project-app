@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft } from 'lucide-react-native';
 import { router } from 'expo-router';
@@ -17,7 +17,7 @@ type ScreenProps = {
 export default function Screen({ title, subtitle, back = false, footer, children }: ScreenProps) {
   return (
     <SafeAreaView style={styles.safeArea}>
-      <View style={styles.container}>
+      <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         {(title || back) && (
           <View style={styles.header}>
             {back ? (
@@ -36,7 +36,7 @@ export default function Screen({ title, subtitle, back = false, footer, children
         </ScrollView>
 
         {footer ? <View style={styles.footer}>{footer}</View> : null}
-      </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -44,17 +44,17 @@ export default function Screen({ title, subtitle, back = false, footer, children
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
   container: { flex: 1, backgroundColor: colors.background, paddingHorizontal: 20 },
-  header: { flexDirection: 'row', alignItems: 'center', marginTop: 12, marginBottom: 8 },
+  header: { flexDirection: 'row', alignItems: 'center', marginTop: 12, marginBottom: 8, minHeight: 48 },
   backButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 48,
+    height: 48,
+    borderRadius: 16,
     backgroundColor: colors.white,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
   },
-  title: { fontSize: 28, fontWeight: '800', color: colors.text, letterSpacing: -0.5 },
+  title: { flex: 1, fontSize: 26, fontWeight: '800', color: colors.text, letterSpacing: -0.5 },
   subtitle: { fontSize: 15, color: colors.textSecondary, marginBottom: 18, lineHeight: 22 },
   content: { paddingBottom: 18 },
   footer: { paddingBottom: 18, paddingTop: 8 },

@@ -4,32 +4,32 @@ import { Platform } from 'react-native';
 
 export const Colors = {
   light: {
-    text: '#000000',
-    background: '#ffffff',
-    backgroundElement: '#F0F0F3',
-    backgroundSelected: '#E0E1E6',
-    textSecondary: '#60646C',
-    primary: '#208AEF',
-    primaryDark: '#0F5CC1',
-    primaryLight: '#EAF5FF',
-    border: '#DCE3EE',
-    danger: '#D94E4E',
-    warning: '#E29D1E',
+    text: '#17251D',
+    background: '#F7FAF8',
+    backgroundElement: '#FFFFFF',
+    backgroundSelected: '#EAF5EE',
+    textSecondary: '#748078',
+    primary: '#16864A',
+    primaryDark: '#0B5933',
+    primaryLight: '#EAF5EE',
+    border: '#E3EBE5',
+    danger: '#DC4545',
+    warning: '#E6A23C',
     success: '#2FA76A',
     white: '#FFFFFF',
   },
   dark: {
-    text: '#ffffff',
-    background: '#000000',
+    text: '#17251D',
+    background: '#0B5933',
     backgroundElement: '#212225',
     backgroundSelected: '#2E3135',
-    textSecondary: '#B0B4BA',
-    primary: '#208AEF',
-    primaryDark: '#0F5CC1',
-    primaryLight: '#EAF5FF',
-    border: '#DCE3EE',
-    danger: '#D94E4E',
-    warning: '#E29D1E',
+    textSecondary: '#748078',
+    primary: '#16864A',
+    primaryDark: '#0B5933',
+    primaryLight: '#EAF5EE',
+    border: '#E3EBE5',
+    danger: '#DC4545',
+    warning: '#E6A23C',
     success: '#2FA76A',
     white: '#FFFFFF',
   },
@@ -59,36 +59,36 @@ export const Fonts = Platform.select({
 });
 
 export const Spacing = {
-  half: 2,
   one: 4,
   two: 8,
-  three: 16,
-  four: 24,
-  five: 32,
-  six: 64,
+  three: 12,
+  four: 16,
+  five: 20,
+  six: 24,
+  seven: 32,
 } as const;
 
 export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;
 export const MaxContentWidth = 800;
 
 export const colors = {
-  primary: '#208AEF',
-  primaryDark: '#0F5CC1',
-  primaryLight: '#EAF5FF',
-  text: '#1B2430',
-  textSecondary: '#5E6A7B',
-  background: '#F4F7FB',
+  primary: '#16864A',
+  primaryDark: '#0B5933',
+  primaryLight: '#EAF5EE',
+  text: '#17251D',
+  textSecondary: '#748078',
+  background: '#F7FAF8',
   white: '#FFFFFF',
-  border: '#DCE3EE',
-  danger: '#D94E4E',
-  warning: '#E29D1E',
+  border: '#E3EBE5',
+  danger: '#DC4545',
+  warning: '#E6A23C',
   success: '#2FA76A',
 };
 
 export const radius = {
-  sm: 10,
-  md: 14,
-  lg: 18,
+  sm: 8,
+  md: 12,
+  lg: 16,
   xl: 24,
 };
 
@@ -99,3 +99,13 @@ export const shadow = {
   shadowRadius: 14,
   elevation: 3,
 };
+
+export const typography = {
+  title: { fontSize: 26, fontWeight: '800' as const },
+  heading: { fontSize: 18, fontWeight: '800' as const },
+  body: { fontSize: 15, fontWeight: '500' as const },
+  label: { fontSize: 13, fontWeight: '600' as const },
+  caption: { fontSize: 12, fontWeight: '500' as const },
+} as const;
+
+export const minTouchTarget = 48;

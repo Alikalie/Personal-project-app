@@ -3,11 +3,13 @@ import { router } from 'expo-router';
 import { Store, User } from 'lucide-react-native';
 
 import { Button, Field, Screen, StepDots } from '@/components/ui';
+import { useAuth } from '@/components/AuthProvider';
 import { onboarding } from '@/services/onboardingStore';
 
 export default function BusinessRegistration() {
+  const { ctx } = useAuth();
   const [name, setName] = useState(onboarding.businessName);
-  const [owner, setOwner] = useState(onboarding.ownerName);
+  const [owner, setOwner] = useState(onboarding.ownerName || ctx?.name || '');
   const [error, setError] = useState('');
 
   const next = () => {
@@ -25,7 +27,7 @@ export default function BusinessRegistration() {
       footer={<Button label="Continue" onPress={next} />}
     >
       <StepDots step={1} />
-      <Field label="Business name" icon={Store} value={name} onChangeText={setName} placeholder="e.g. Aminata Fashion Store" error={error} />
+      <Field label="Business name" icon={Store} value={name} onChangeText={setName} placeholder="Your business name" error={error} />
       <Field label="Owner name" icon={User} value={owner} onChangeText={setOwner} placeholder="Your full name" />
     </Screen>
   );
