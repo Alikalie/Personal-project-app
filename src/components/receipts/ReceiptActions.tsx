@@ -1,0 +1,285 @@
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
+import ViewShot, { type ViewShotRef } from 'react-native-view-shot';
+
+import { Button } from '@/components/ui';
+import { colors, radius, Spacing, typography } from '@/constants/theme';
+import { formatSLE } from '@/lib/money';
+import { createReceiptPdf, downloadReceipt, printReceipt, receiptFriendlyError, shareReceipt, shareReceiptImage } from '@/lib/receipt/receiptFile';
+import { normalizeSierraLeonePhone } from '@/lib/receipt/receiptHtml';
+import { saveReceiptData } from '@/lib/receipt/receiptStore';
+import type { ReceiptData, ReceiptLayout } from '@/lib/receipt/types';
+
+type Action = 'generate' | 'share' | 'download' | 'image' | 'print' | 'whatsapp' | null;
+
+function paymentLabel(method: string): string {
+  if (method === 'orange_money') return 'Orange Money';
+  if (method === 'afrimoney') return 'Afrimoney';
+  if (method === 'cash') return 'Cash';
+  if (method === 'other') return 'Other';
+  return method.replace(/_/g, ' ');
+}
+
+function ReceiptPreview({ data }: { data: ReceiptData }) {
+  return (
+    <View style={styles.preview}>
+      <Text style={styles.previewBusiness}>{data.business.name}</Text>
+      {data.business.address ? <Text style={styles.previewSecondary}>{data.business.address}</Text> : null}
+      {data.business.phone ? <Text style={styles.previewSecondary}>{data.business.phone}</Text> : null}
+      {data.business.header ? <Text style={styles.previewSecondary}>{data.business.header}</Text> : null}
+      <View style={styles.previewDivider} />
+      <Text style={styles.previewTitle}>{data.kind === 'sale' ? 'Sale receipt' : 'Payment receipt'}</Text>
+      <Text style={styles.previewSecondary}>Receipt {data.receiptNo}</Text>
+      <Text style={styles.previewSecondary}>
+        {new Intl.DateTimeFormat('en-SL', {
+          timeZone: 'Africa/Freetown',
+          dateStyle: 'medium',
+          timeStyle: 'short',
+        }).format(new Date(data.issuedAt))}
+      </Text>
+      {data.kind === 'sale' ? (
+        <>
+          {data.customerName ? <Text style={styles.previewSecondary}>Customer: {data.customerName}</Text> : null}
+          <View style={styles.previewDivider} />
+          {data.items.map((item, index) => (
+            <View key={`${item.name}-${index}`} style={styles.previewRow}>
+              <Text style={styles.previewLabel}>{item.name} × {item.quantity}</Text>
+              <Text style={styles.previewValue}>{formatSLE(item.lineTotalMinor)}</Text>
+            </View>
+          ))}
+          <View style={styles.previewDivider} />
+          <PreviewRow label="Subtotal" value={formatSLE(data.subtotalMinor)} />
+          {data.discountMinor > 0 ? <PreviewRow label="Discount" value={`-${formatSLE(data.discountMinor)}`} /> : null}
+          <PreviewRow label="Total" value={formatSLE(data.totalMinor)} strong />
+          {data.payments.map((payment, index) => (
+            <PreviewRow key={`${payment.method}-${index}`} label={paymentLabel(payment.method)} value={formatSLE(payment.amountMinor)} />
+          ))}
+          {data.balanceOwedMinor > 0 ? <PreviewRow label="Balance owed" value={formatSLE(data.balanceOwedMinor)} strong /> : null}
+          {data.changeMinor > 0 ? <PreviewRow label="Change given" value={formatSLE(data.changeMinor)} /> : null}
+        </>
+      ) : (
+        <>
+          <Text style={styles.previewSecondary}>Customer: {data.customerName}</Text>
+          <View style={styles.previewDivider} />
+          <PreviewRow label="Method" value={paymentLabel(data.method)} />
+          <PreviewRow label="Amount paid" value={formatSLE(data.paymentMinor)} strong />
+          <PreviewRow label="Previous balance" value={formatSLE(data.previousBalanceMinor)} />
+          <PreviewRow label="New balance" value={formatSLE(data.newBalanceMinor)} strong />
+          {data.note ? <Text style={styles.previewSecondary}>Note: {data.note}</Text> : null}
+        </>
+      )}
+      <View style={styles.previewDivider} />
+      <Text style={styles.previewSecondary}>Cashier: {data.cashierName}</Text>
+      <Text style={styles.previewFooter}>{data.business.footer || 'Thank you for your business.'}</Text>
+    </View>
+  );
+}
+
+function PreviewRow({ label, value, strong = false }: { label: string; value: string; strong?: boolean }) {
+  return (
+    <View style={styles.previewRow}>
+      <Text style={[styles.previewLabel, strong && styles.previewStrong]}>{label}</Text>
+      <Text style={[styles.previewValue, strong && styles.previewStrong]}>{value}</Text>
+    </View>
+  );
+}
+
+export function ReceiptActions({
+  data,
+  cacheKey,
+  autoGenerate = true,
+}: {
+  data: ReceiptData;
+  cacheKey?: string;
+  autoGenerate?: boolean;
+}) {
+  const viewShot = useRef<ViewShotRef | null>(null);
+  const savedPdf = useRef<{ uri: string; layout: ReceiptLayout } | null>(null);
+  const autoGeneratedFor = useRef<string | null>(null);
+  const [layout, setLayout] = useState<ReceiptLayout>('compact');
+  const [busy, setBusy] = useState<Action>(null);
+  const [error, setError] = useState('');
+  const [technicalError, setTechnicalError] = useState('');
+  const [showTechnical, setShowTechnical] = useState(false);
+  const [message, setMessage] = useState('');
+
+  const createPdf = useCallback(async (targetLayout: ReceiptLayout): Promise<string> => {
+    const uri = await createReceiptPdf(data, targetLayout);
+    savedPdf.current = { uri, layout: targetLayout };
+    try {
+      await saveReceiptData(cacheKey ?? data.receiptNo, data);
+    } catch (storeError) {
+      console.warn('Receipt data could not be cached:', storeError);
+    }
+    return uri;
+  }, [cacheKey, data]);
+
+  useEffect(() => {
+    if (!autoGenerate || autoGeneratedFor.current === data.receiptNo) return;
+    autoGeneratedFor.current = data.receiptNo;
+    let active = true;
+    setBusy('generate');
+    setError('');
+    void createPdf('compact').then(() => {
+      if (active) setMessage('Receipt ready.');
+    }).catch((failure: unknown) => {
+      if (!active) return;
+      console.warn('Receipt preparation failed:', failure);
+      setError(receiptFriendlyError(failure));
+      setTechnicalError(failure instanceof Error ? failure.message : String(failure));
+    }).finally(() => {
+      if (active) setBusy(null);
+    });
+    return () => {
+      active = false;
+    };
+  }, [autoGenerate, cacheKey, createPdf, data]);
+
+  const run = async (action: Exclude<Action, null>, task: () => Promise<void>) => {
+    if (busy) return;
+    setBusy(action);
+    setError('');
+    setTechnicalError('');
+    setShowTechnical(false);
+    setMessage('');
+    try {
+      await task();
+    } catch (failure) {
+      console.warn('Receipt action failed:', failure);
+      setError(receiptFriendlyError(failure));
+      setTechnicalError(failure instanceof Error ? failure.message : String(failure));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const ensurePdf = async (): Promise<string> => {
+    if (savedPdf.current?.layout === layout) return savedPdf.current.uri;
+    return createPdf(layout);
+  };
+
+  const openWhatsApp = async () => {
+    const phone = data.customerPhone ? normalizeSierraLeonePhone(data.customerPhone) : null;
+    if (!phone) throw new Error('This customer does not have a usable phone number.');
+    const total = data.kind === 'sale' ? data.totalMinor : data.paymentMinor;
+    const text = encodeURIComponent(
+      `Receipt ${data.receiptNo}: ${formatSLE(total)}. The PDF can be attached from the share sheet.`,
+    );
+    await Linking.openURL(`https://wa.me/${phone.slice(1)}?text=${text}`);
+    setMessage('WhatsApp opened. Attach the PDF from the share sheet.');
+  };
+
+  const saving = busy !== null;
+  const canSendWhatsApp = Boolean(data.customerPhone && normalizeSierraLeonePhone(data.customerPhone));
+
+  return (
+    <View style={styles.container}>
+      <View style={styles.layoutToggle}>
+        {(['compact', 'a4'] as const).map((option) => (
+          <Pressable
+            key={option}
+            accessibilityRole="button"
+            accessibilityState={{ selected: layout === option }}
+            onPress={() => setLayout(option)}
+            style={[styles.layoutOption, layout === option && styles.layoutSelected]}
+          >
+            <Text style={[styles.layoutText, layout === option && styles.layoutTextSelected]}>
+              {option === 'compact' ? '80 mm' : 'A4'}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
+      <ViewShot ref={viewShot} options={{ format: 'png', quality: 1, result: 'tmpfile' }}>
+        <ReceiptPreview data={data} />
+      </ViewShot>
+      {error ? <Text style={styles.error}>{error}</Text> : null}
+      {error && __DEV__ && technicalError ? (
+        <>
+          <Pressable onPress={() => setShowTechnical((value) => !value)} accessibilityRole="button">
+            <Text style={styles.technicalToggle}>{showTechnical ? 'Hide technical details' : 'Technical details'}</Text>
+          </Pressable>
+          {showTechnical ? <Text style={styles.technical}>{technicalError}</Text> : null}
+        </>
+      ) : null}
+      {message ? <Text style={styles.message}>{message}</Text> : null}
+      {error && busy === null ? (
+        <Button label="Try again" onPress={() => void run('generate', async () => { await createPdf(layout); setMessage('Receipt ready.'); })} loading={busy === 'generate'} disabled={saving} />
+      ) : null}
+      <Button
+        label="Share receipt"
+        onPress={() => void run('share', async () => {
+          await shareReceipt(await ensurePdf());
+          setMessage('Receipt shared.');
+        })}
+        loading={busy === 'share' || busy === 'generate'}
+        disabled={saving}
+      />
+      <Button
+        label="Download PDF"
+        variant="outline"
+        onPress={() => void run('download', async () => {
+          const fileName = `SaloneBiz-Receipt-${data.receiptNo}.pdf`;
+          setMessage(await downloadReceipt(await ensurePdf(), fileName));
+        })}
+        loading={busy === 'download'}
+        disabled={saving}
+      />
+      <Button
+        label="Share as image"
+        variant="outline"
+        onPress={() => void run('image', async () => {
+          const imageUri = await viewShot.current?.capture();
+          if (!imageUri) throw new Error('The receipt image could not be created.');
+          await shareReceiptImage(imageUri);
+          setMessage('Receipt image shared.');
+        })}
+        loading={busy === 'image'}
+        disabled={saving}
+      />
+      <Button
+        label="Print"
+        variant="outline"
+        onPress={() => void run('print', async () => {
+          await printReceipt(data, layout);
+          setMessage('Print dialog opened.');
+        })}
+        loading={busy === 'print'}
+        disabled={saving}
+      />
+      {canSendWhatsApp ? (
+        <Button
+          label="Send on WhatsApp"
+          variant="outline"
+          onPress={() => void run('whatsapp', openWhatsApp)}
+          loading={busy === 'whatsapp'}
+          disabled={saving}
+        />
+      ) : null}
+      {busy === 'generate' ? <Text style={styles.generating}>Preparing your receipt…</Text> : null}
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { gap: Spacing.two },
+  layoutToggle: { flexDirection: 'row', gap: Spacing.two },
+  layoutOption: { minHeight: 44, minWidth: 72, justifyContent: 'center', alignItems: 'center', borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.white },
+  layoutSelected: { borderColor: colors.primary, backgroundColor: colors.primaryLight },
+  layoutText: { color: colors.textSecondary, ...typography.label },
+  layoutTextSelected: { color: colors.primaryDark },
+  preview: { padding: Spacing.four, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.white, gap: 5 },
+  previewBusiness: { color: colors.text, ...typography.heading, textAlign: 'center' },
+  previewTitle: { color: colors.text, ...typography.label, marginTop: 4 },
+  previewSecondary: { color: colors.textSecondary, ...typography.caption, textAlign: 'center' },
+  previewDivider: { borderBottomWidth: 1, borderStyle: 'dashed', borderColor: colors.border, marginVertical: 5 },
+  previewRow: { minHeight: 30, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: Spacing.two },
+  previewLabel: { color: colors.textSecondary, ...typography.caption, flex: 1 },
+  previewValue: { color: colors.text, ...typography.caption, fontWeight: '700', textAlign: 'right' },
+  previewStrong: { color: colors.text, fontWeight: '800' },
+  previewFooter: { color: colors.textSecondary, ...typography.caption, textAlign: 'center', marginTop: Spacing.two },
+  error: { color: colors.danger, ...typography.caption },
+  technicalToggle: { color: colors.textSecondary, ...typography.caption, textDecorationLine: 'underline' },
+  technical: { color: colors.textSecondary, ...typography.caption },
+  message: { color: colors.success, ...typography.caption },
+  generating: { color: colors.textSecondary, ...typography.caption, textAlign: 'center' },
+});

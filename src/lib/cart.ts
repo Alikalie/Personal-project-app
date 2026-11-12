@@ -55,6 +55,22 @@ export function calculateCartTotals(items: CartItem[], discount: CartDiscount): 
   return { subtotal, discount: requestedDiscount, total: subtotal - requestedDiscount };
 }
 
+export function calculateCashChange(amountReceivedMinor: number, amountDueMinor: number): {
+  appliedMinor: number;
+  changeMinor: number;
+} {
+  if (
+    !Number.isSafeInteger(amountReceivedMinor)
+    || amountReceivedMinor < 0
+    || !Number.isSafeInteger(amountDueMinor)
+    || amountDueMinor < 0
+  ) {
+    throw new Error('Cash received and amount due must be non-negative integer minor units.');
+  }
+  const appliedMinor = Math.min(amountReceivedMinor, amountDueMinor);
+  return { appliedMinor, changeMinor: amountReceivedMinor - appliedMinor };
+}
+
 export function parsePercentToBasisPoints(input: string): number {
   const match = /^(\d+)(?:\.(\d{1,2}))?$/.exec(input.trim());
   if (!match) throw new Error('Enter a percentage with up to 2 decimal places.');
@@ -65,5 +81,7 @@ export function parsePercentToBasisPoints(input: string): number {
   return basisPoints;
 }
 
-// Rounding examples: 1 minor unit * 50% => 0; 3 minor units * 50% => 1.
-// 10,001 minor units * 12.34% => floor(1,234,123 / 10,000) = 123 minor units.
+// Examples: two 1,000-minor items total 2,000; a fixed 250 discount leaves 1,750.
+// A 12.34% discount on 10,001 minor units floors to 123; fixed discounts over subtotal throw.
+// Cash of 1,200 against 1,000 due applies 1,000 and gives 200 change.
+// Rounding: 1 minor unit * 50% => 0; 3 minor units * 50% => 1.

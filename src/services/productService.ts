@@ -219,20 +219,32 @@ export async function listMovements(
 ): Promise<{ rows: StockMovement[]; total: number }> {
   const page = Math.max(0, filter.page ?? 0);
   const pageSize = filter.pageSize ?? 30;
-  let query = supabase.from('stock_movements')
-    .select('*', { count: 'exact' })
-    .eq('business_id', businessId)
-    .order('created_at', { ascending: false })
-    .range(page * pageSize, page * pageSize + pageSize - 1);
-  if (filter.type) query = query.eq('type', filter.type);
-  if (filter.productId) query = query.eq('product_id', filter.productId);
-  if (filter.startDate) query = query.gte('created_at', `${filter.startDate}T00:00:00`);
-  if (filter.endDate) {
-    const nextDay = new Date(`${filter.endDate}T00:00:00Z`);
-    nextDay.setUTCDate(nextDay.getUTCDate() + 1);
-    query = query.lt('created_at', nextDay.toISOString());
+  const queryMovements = async (typeColumn: 'type' | 'movement_type') => {
+    let query = supabase.from('stock_movements')
+      .select('*', { count: 'exact' })
+      .eq('business_id', businessId)
+      .order('created_at', { ascending: false })
+      .range(page * pageSize, page * pageSize + pageSize - 1);
+    if (filter.type) query = query.eq(typeColumn, filter.type);
+    if (filter.productId) query = query.eq('product_id', filter.productId);
+    if (filter.startDate) query = query.gte('created_at', `${filter.startDate}T00:00:00`);
+    if (filter.endDate) {
+      const nextDay = new Date(`${filter.endDate}T00:00:00Z`);
+      nextDay.setUTCDate(nextDay.getUTCDate() + 1);
+      query = query.lt('created_at', nextDay.toISOString());
+    }
+    return query;
+  };
+  let result = await queryMovements('type');
+  if (
+    result.error
+    && filter.type
+    && result.error.code === '42703'
+    && /column .*type.* does not exist/i.test(result.error.message)
+  ) {
+    result = await queryMovements('movement_type');
   }
-  const { data, count, error } = await query;
+  const { data, count, error } = result;
   if (error) throw new Error(friendlyErrorMessage(error));
   const movementRows = (data ?? []).map(recordOf);
   const productIds = [...new Set(movementRows.flatMap((row) =>
@@ -275,7 +287,7 @@ export async function listMovements(
         product_name: productNames.get(productId) ?? 'Deleted product',
         type,
         quantity_change: change,
-        quantity_after: numberOf(row.quantity_after ?? 0),
+        quantity_after: numberOf(row.quantity_after ?? row.stock_after ?? 0),
         reason: typeof row.reason === 'string' ? row.reason : '',
         note: nullableText(row.note),
         actor_name: actorNames.get(actorId) ?? 'Team member',
@@ -315,9 +327,10 @@ export async function getLowStockCount(businessId: string): Promise<number> {
 }
 
 export async function getStockValuation(businessId: string): Promise<number> {
-  const { data, error } = await supabase.from('stock_valuation')
+  const { data, error } = await supabase.from('products')
     .select('quantity, cost_price_minor')
-    .eq('business_id', businessId);
+    .eq('business_id', businessId)
+    .is('deleted_at', null);
   if (error) throw new Error(friendlyErrorMessage(error));
   return (data ?? []).reduce((value, row) => {
     const quantity = numberOf(row.quantity);

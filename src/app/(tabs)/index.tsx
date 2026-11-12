@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
+import { useFocusEffect } from 'expo-router';
 import {
   AlertTriangle,
   Banknote,
@@ -27,7 +28,7 @@ import { useAuth } from '@/components/AuthProvider';
 import { colors, radius, shadow, Spacing } from '@/constants/theme';
 import { friendlyErrorMessage } from '@/lib/errors';
 import { formatSLE } from '@/lib/money';
-import { getDashboard } from '@/services/dashboardService';
+import { getDashboard, subscribeToDashboardRefresh } from '@/services/dashboardService';
 
 type Dash = Awaited<ReturnType<typeof getDashboard>>;
 
@@ -87,7 +88,24 @@ export default function Dashboard() {
     }
   }, [ctx?.businessId]);
 
-  useEffect(() => { void load(); }, [load]);
+  const refreshAfterSale = useCallback(async (businessId: string) => {
+    if (ctx?.businessId !== businessId) return;
+    setRefreshing(true);
+    setError('');
+    try {
+      setData(await getDashboard(businessId));
+    } catch (refreshError) {
+      setError(friendlyErrorMessage(refreshError));
+      throw refreshError;
+    } finally {
+      setRefreshing(false);
+    }
+  }, [ctx?.businessId]);
+
+  useEffect(() => subscribeToDashboardRefresh(refreshAfterSale), [refreshAfterSale]);
+  useFocusEffect(useCallback(() => {
+    void load();
+  }, [load]));
 
   if (loading && !data) {
     return (

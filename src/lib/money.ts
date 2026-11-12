@@ -1,5 +1,5 @@
 export function parseSLEToMinorUnits(value: string): number {
-  const input = value.trim();
+  const input = value.trim().replace(/^Le\s*/i, '');
   const match = /^(\d+)(?:\.(\d{1,2}))?$/.exec(input);
   if (!match) {
     throw new Error('Enter a non-negative amount with up to 2 decimal places.');

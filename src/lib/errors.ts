@@ -14,25 +14,69 @@ function detailsOf(error: unknown): ErrorDetails {
   };
 }
 
-export function friendlyErrorMessage(error: unknown): string {
+export function friendlyErrorMessage(error: unknown, context?: 'sale' | 'repayment' | 'repayment-record' | 'receipt' | 'admin'): string {
   const { message = '', code = '', status } = detailsOf(error);
   const normalized = `${code} ${message}`.toLowerCase();
 
-  const stockError = /not enough stock for (.+)|insufficient stock for (.+)/.exec(normalized);
+  if (context === 'repayment-record') {
+    if (/payment is more than the customer owes|payment.*more than.*customer owes/.test(normalized)) {
+      return 'That payment is more than the customer owes.';
+    }
+    if (/amount.*(greater than zero|above zero|must be positive)|invalid amount/.test(normalized)) {
+      return 'Enter an amount greater than zero.';
+    }
+    if (/42501|permission denied|not allowed|not authorized|unauthorized/.test(normalized)) {
+      return 'You do not have permission.';
+    }
+    if (/network|fetch|internet|connection/.test(normalized) || error instanceof TypeError) {
+      return 'No internet connection.';
+    }
+    return 'Could not record this payment. Please try again.';
+  }
+
+  if (context === 'repayment') {
+    if (/payment is more than the customer owes|payment.*more than.*customer owes/.test(normalized)) {
+      return 'That payment is more than the customer owes.';
+    }
+    if (/this payment was already changed|payment.*already changed/.test(normalized)) {
+      return 'This payment was already changed.';
+    }
+    if (/reason is required|reason.*required|please give a reason/.test(normalized)) {
+      return 'Please give a reason.';
+    }
+    if (/not allowed|42501|permission denied|not authorized|unauthorized/.test(normalized)) {
+      return 'Only owners and managers can change payments.';
+    }
+    if (/network|fetch|internet|connection/.test(normalized) || error instanceof TypeError) {
+      return 'No internet connection.';
+    }
+    return 'Could not change this payment. Please try again.';
+  }
+  if (context === 'admin') {
+    if (/not allowed|42501|permission denied|not authorized|unauthorized/.test(normalized)) {
+      return 'You do not have permission to use this admin action.';
+    }
+    if (/network|fetch|internet|connection/.test(normalized) || error instanceof TypeError) {
+      return 'No internet connection. Check your connection and try again.';
+    }
+    return 'Could not load or update admin data. Please try again.';
+  }
+
+  const stockError = /not enough stock for (.+)|insufficient stock for (.+)/i.exec(message);
   if (stockError) {
     return `Not enough stock for ${stockError[1] ?? stockError[2]}.`;
   }
   if (/not enough stock|insufficient stock|stock.*insufficient/.test(normalized)) {
     return 'Not enough stock. Check the available quantity and try again.';
   }
-  if (/select a customer|customer.*credit|credit.*customer/.test(normalized)) {
-    return 'Select a customer for a credit sale.';
+  if (/select a customer|choose a customer|customer.*credit|credit.*customer/.test(normalized)) {
+    return 'Choose a customer for a credit sale.';
   }
-  if (/payments exceed|payment.*exceed.*total/.test(normalized)) {
-    return 'Payments exceed the sale total.';
+  if (/payments exceed|payments are more than|payment.*exceed.*total/.test(normalized)) {
+    return 'Payments are more than the total.';
   }
-  if (/invalid discount|discount.*invalid|discount cannot exceed/.test(normalized)) {
-    return 'Invalid discount. It cannot exceed the sale subtotal.';
+  if (/invalid discount|discount.*invalid|discount cannot exceed|discount.*(too large|exceed)/.test(normalized)) {
+    return 'Discount is too large.';
   }
   if (/23505|duplicate key|unique constraint/.test(normalized)) {
     if (/sku|barcode/.test(normalized)) {
@@ -42,6 +86,9 @@ export function friendlyErrorMessage(error: unknown): string {
       return 'A category with this name already exists.';
     }
     return 'This item already exists.';
+  }
+  if (/42501|permission denied|not authorized|unauthorized/.test(normalized) && context === 'sale') {
+    return 'You do not have permission to sell.';
   }
   if (/42501|permission denied|not authorized|unauthorized/.test(normalized)) {
     return 'You do not have permission to make this change.';
@@ -57,6 +104,9 @@ export function friendlyErrorMessage(error: unknown): string {
   }
   if (/network|fetch|internet|connection/.test(normalized) || error instanceof TypeError) {
     return 'No internet connection. Check your connection and try again.';
+  }
+  if (context === 'receipt') {
+    return 'Could not prepare this receipt. Please try again.';
   }
 
   return message || 'Something went wrong. Please try again.';

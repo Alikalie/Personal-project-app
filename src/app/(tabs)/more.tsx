@@ -102,7 +102,7 @@ export default function More() {
         </SettingsGroup>
         {isPlatformAdmin(admin) ? (
           <SettingsGroup title="Admin">
-            <ListRow title="Admin panel" subtitle="Platform tools" icon={Shield} badge={{ label: admin === 'super_admin' ? 'Super admin' : 'Support', tone: 'neutral' }} chevron onPress={() => Alert.alert('Admin panel', 'Platform tools are not available in this app version.')} />
+            <ListRow title="Admin panel" subtitle="Platform tools" icon={Shield} badge={{ label: admin === 'super_admin' ? 'Super admin' : 'Support', tone: 'neutral' }} chevron onPress={() => router.push('/admin')} />
           </SettingsGroup>
         ) : null}
         <Card style={styles.footer}>

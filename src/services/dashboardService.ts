@@ -20,6 +20,22 @@ type DashboardData = {
   }[];
 };
 
+type DashboardRefreshListener = (businessId: string) => Promise<void>;
+const dashboardRefreshListeners = new Set<DashboardRefreshListener>();
+
+export function subscribeToDashboardRefresh(listener: DashboardRefreshListener): () => void {
+  dashboardRefreshListeners.add(listener);
+  return () => dashboardRefreshListeners.delete(listener);
+}
+
+export async function refreshDashboardViews(businessId: string): Promise<void> {
+  if (dashboardRefreshListeners.size === 0) {
+    await getDashboard(businessId);
+    return;
+  }
+  await Promise.all([...dashboardRefreshListeners].map((listener) => listener(businessId)));
+}
+
 function objectOf(value: unknown): Record<string, unknown> | null {
   return typeof value === 'object' && value !== null
     ? value as Record<string, unknown>

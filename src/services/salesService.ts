@@ -1,8 +1,10 @@
 import type { CartItem } from '@/lib/cart';
+import { calculateCartTotals } from '@/lib/cart';
 import { friendlyErrorMessage } from '@/lib/errors';
 import { supabase } from '@/lib/supabase';
 import type { Customer } from '@/services/customerService';
 import { getImageUrl, type Product } from '@/services/productService';
+import * as FileSystem from 'expo-file-system/legacy';
 
 export type PaymentMethod = 'cash' | 'orange_money' | 'afrimoney' | 'other';
 export type PaymentInput = {
@@ -52,13 +54,30 @@ export type SaleReceiptData = SaleRecord & {
     receipt_footer: string | null;
     show_logo_on_receipt: boolean;
     logo_path: string | null;
-    logo_url: string | null;
+    logo_data_uri: string | null;
   };
+};
+export type SaleHistoryItem = {
+  id: string;
+  receiptNo: string;
+  totalMinor: number;
+  creditMinor: number;
+  soldAt: string;
+  customerName: string;
+  paymentMethods: string[];
 };
 export type SaleListRow = {
   sale: Sale;
   customerName: string;
   paymentMethods: string[];
+};
+export type CreateSaleInput = {
+  saleId: string;
+  businessId: string;
+  customerId: string | null;
+  items: CartItem[];
+  discountMinor: number;
+  payments: PaymentInput[];
 };
 
 type Raw = Record<string, unknown>;
@@ -126,18 +145,6 @@ function mapPayment(value: unknown): SalePayment {
   };
 }
 
-async function cashierNames(ids: string[]): Promise<Map<string, string>> {
-  const uniqueIds = [...new Set(ids)];
-  if (uniqueIds.length === 0) return new Map();
-  const { data, error } = await supabase.from('profiles').select('id, full_name').in('id', uniqueIds);
-  if (error) throw new Error(friendlyErrorMessage(error));
-  return new Map((data ?? []).flatMap((row) =>
-    typeof row.id === 'string' && typeof row.full_name === 'string'
-      ? [[row.id, row.full_name] as const]
-      : [],
-  ));
-}
-
 export async function listSellableProducts(businessId: string, options: { search?: string; categoryId?: string } = {}): Promise<Product[]> {
   let query = supabase.from('products')
     .select('*')
@@ -176,48 +183,80 @@ export async function listSellableProducts(businessId: string, options: { search
   } as Product)));
 }
 
-export async function createSale(input: {
-  saleId: string;
-  businessId: string;
-  customerId: string | null;
-  items: CartItem[];
-  discountMinor: number;
-  payments: PaymentInput[];
-  soldAt?: string;
-}): Promise<string> {
-  if (!Number.isSafeInteger(input.discountMinor) || input.discountMinor < 0) {
-    throw new Error('Invalid discount.');
+export async function createSale(input: CreateSaleInput): Promise<string> {
+  const discountMinor = Math.round(input.discountMinor);
+  if (!Number.isSafeInteger(discountMinor) || discountMinor < 0) {
+    throw new Error('Discount is too large.');
   }
-  const { data, error } = await supabase.rpc('create_sale', {
-    p_sale_id: input.saleId,
-    p_business_id: input.businessId,
-    p_customer_id: input.customerId,
-    p_items: input.items.map((item) => ({
-      product_id: item.productId,
-      quantity: item.quantity,
-      unit_price_minor: item.unitPriceMinor,
-    })),
-    p_discount_minor: input.discountMinor,
-    p_payments: input.payments.map((payment) => ({
-      method: payment.method,
-      amount_minor: payment.amountMinor,
-      reference: payment.reference,
-    })),
-    p_sold_at: input.soldAt ?? new Date().toISOString(),
+  const items = input.items.map((item) => {
+    const unitPriceMinor = Math.round(item.unitPriceMinor);
+    if (
+      !item.productId
+      || !Number.isSafeInteger(item.quantity)
+      || item.quantity <= 0
+      || item.quantity > item.maxStock
+      || !Number.isSafeInteger(unitPriceMinor)
+      || unitPriceMinor < 0
+    ) {
+      throw new Error(`Not enough stock for ${item.name}.`);
+    }
+    return { ...item, unitPriceMinor };
   });
-  if (error) throw new Error(friendlyErrorMessage(error));
-  return typeof data === 'string' ? data : input.saleId;
+  if (items.length === 0) throw new Error('Your cart is empty.');
+
+  const subtotal = calculateCartTotals(items, null).subtotal;
+  if (discountMinor > subtotal) throw new Error('Discount is too large.');
+  const totalAfterDiscount = subtotal - discountMinor;
+
+  const payments = input.payments.map((payment) => {
+    const amountMinor = Math.round(payment.amountMinor);
+    if (!Number.isSafeInteger(amountMinor)) throw new Error('Enter a valid payment amount.');
+    return { ...payment, amountMinor };
+  }).filter((payment) => payment.amountMinor > 0);
+  if (payments.some((payment) => !['cash', 'orange_money', 'afrimoney', 'other'].includes(payment.method))) {
+    throw new Error('Invalid payment method.');
+  }
+  const paymentTotal = payments.reduce((total, payment) => total + payment.amountMinor, 0);
+  if (!Number.isSafeInteger(paymentTotal) || paymentTotal > totalAfterDiscount) {
+    throw new Error('Payments are more than the total.');
+  }
+  if (paymentTotal < totalAfterDiscount && !input.customerId) {
+    throw new Error('Choose a customer for a credit sale.');
+  }
+
+  try {
+    const { data, error } = await supabase.rpc('create_sale', {
+      p_sale_id: input.saleId,
+      p_business_id: input.businessId,
+      p_customer_id: input.customerId,
+      p_items: items.map((item) => ({
+        product_id: item.productId,
+        quantity: item.quantity,
+        unit_price_minor: item.unitPriceMinor,
+      })),
+      p_discount_minor: discountMinor,
+      p_payments: payments.map((payment) => ({
+        method: payment.method,
+        amount_minor: payment.amountMinor,
+        reference: payment.reference,
+      })),
+    });
+    if (error) throw error;
+    return typeof data === 'string' ? data : input.saleId;
+  } catch (error) {
+    console.warn('create_sale RPC failed:', error);
+    throw new Error(friendlyErrorMessage(error, 'sale'));
+  }
 }
 
 export async function getSale(saleId: string): Promise<SaleRecord> {
   const { data, error } = await supabase.from('sales')
-    .select('*, sale_items(*), sale_payments(*), customer:customers(id, business_id, name, phone)')
+    .select('id, business_id, customer_id, receipt_no, total_minor, discount_minor, credit_minor, sold_at, sale_items(id, product_id, product_name, quantity, unit_price_minor, line_total_minor), sale_payments(id, method, amount_minor, reference), customer:customers(id, business_id, name, phone)')
     .eq('id', saleId)
     .single();
   if (error) throw new Error(friendlyErrorMessage(error));
   const row = data as unknown as Raw;
   const sale = mapSale(row);
-  const cashier = sale.cashier_id ? await cashierNames([sale.cashier_id]) : new Map<string, string>();
   const items = (Array.isArray(row.sale_items) ? row.sale_items : []).map(mapSaleItem);
   const payments = (Array.isArray(row.sale_payments) ? row.sale_payments : []).map(mapPayment);
   return {
@@ -225,7 +264,7 @@ export async function getSale(saleId: string): Promise<SaleRecord> {
     items,
     payments,
     customer: mapCustomer(relation(row.customer)),
-    cashierName: sale.cashier_id ? cashier.get(sale.cashier_id) ?? 'Team member' : 'Team member',
+    cashierName: 'Team member',
   };
 }
 
@@ -275,6 +314,38 @@ export async function listSales(
   return { rows, total: count ?? 0, dayTotals };
 }
 
+export async function listReceiptSales(
+  businessId: string,
+  options: { customerId?: string; page?: number } = {},
+): Promise<{ rows: SaleHistoryItem[]; total: number }> {
+  const pageSize = 30;
+  const page = Math.max(0, options.page ?? 0);
+  let query = supabase.from('sales')
+    .select('id, receipt_no, total_minor, credit_minor, sold_at, customer:customers(name), sale_payments(method)', { count: 'exact' })
+    .eq('business_id', businessId)
+    .order('sold_at', { ascending: false })
+    .range(page * pageSize, page * pageSize + pageSize - 1);
+  if (options.customerId) query = query.eq('customer_id', options.customerId);
+  const { data, count, error } = await query;
+  if (error) throw new Error(friendlyErrorMessage(error));
+  const rows = (data ?? []).map((value) => {
+    const row = value as unknown as Raw;
+    const methods = Array.isArray(row.sale_payments)
+      ? row.sale_payments.map((payment) => textValue((payment as Raw).method))
+      : [];
+    return {
+      id: textValue(row.id),
+      receiptNo: textValue(row.receipt_no),
+      totalMinor: numberValue(row.total_minor),
+      creditMinor: numberValue(row.credit_minor),
+      soldAt: textValue(row.sold_at),
+      customerName: textValue(relation(row.customer)?.name, 'Walk-in customer'),
+      paymentMethods: methods,
+    };
+  });
+  return { rows, total: count ?? 0 };
+}
+
 export async function getReceiptData(saleId: string): Promise<SaleReceiptData> {
   const record = await getSale(saleId);
   const { data, error } = await supabase.from('businesses')
@@ -283,14 +354,36 @@ export async function getReceiptData(saleId: string): Promise<SaleReceiptData> {
     .single();
   if (error) throw new Error(friendlyErrorMessage(error));
   const business = data as unknown as Raw;
-  let logoUrl: string | null = null;
+  let logoDataUri: string | null = null;
   const logoPath = typeof business.logo_path === 'string' ? business.logo_path : null;
   if (logoPath && business.show_logo_on_receipt === true) {
-    const { data: signedUrl, error: logoError } = await supabase.storage
-      .from('product-images')
-      .createSignedUrl(logoPath, 60 * 60);
-    if (logoError) throw new Error(friendlyErrorMessage(logoError));
-    logoUrl = signedUrl.signedUrl;
+    let downloadedUri: string | null = null;
+    try {
+      const { data: signedUrl, error: logoError } = await supabase.storage
+        .from('product-images')
+        .createSignedUrl(logoPath, 60 * 60);
+      if (logoError) throw logoError;
+      if (!FileSystem.cacheDirectory) throw new Error('The app cache is not available.');
+      const extension = logoPath.split('.').pop()?.toLowerCase();
+      const mimeType = extension === 'png' ? 'image/png' : extension === 'webp' ? 'image/webp' : 'image/jpeg';
+      const result = await FileSystem.downloadAsync(
+        signedUrl.signedUrl,
+        `${FileSystem.cacheDirectory}salonebiz-receipt-logo-${Date.now()}`,
+      );
+      downloadedUri = result.uri;
+      const base64 = await FileSystem.readAsStringAsync(result.uri, { encoding: FileSystem.EncodingType.Base64 });
+      if (base64) logoDataUri = `data:${mimeType};base64,${base64}`;
+    } catch (logoError) {
+      console.warn('Receipt logo could not be embedded; continuing without it:', logoError);
+    } finally {
+      if (downloadedUri) {
+        try {
+          await FileSystem.deleteAsync(downloadedUri, { idempotent: true });
+        } catch (cleanupError) {
+          console.warn('Temporary receipt logo could not be removed:', cleanupError);
+        }
+      }
+    }
   }
   return {
     ...record,
@@ -302,7 +395,7 @@ export async function getReceiptData(saleId: string): Promise<SaleReceiptData> {
       receipt_footer: typeof business.receipt_footer === 'string' ? business.receipt_footer : null,
       show_logo_on_receipt: business.show_logo_on_receipt === true,
       logo_path: logoPath,
-      logo_url: logoUrl,
+      logo_data_uri: logoDataUri,
     },
   };
 }

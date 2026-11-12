@@ -98,7 +98,7 @@ export default function Movements() {
       ) : rows.length === 0 ? (
         <View style={styles.state}><Text style={styles.emptyTitle}>No stock movements found</Text><Text style={styles.subtitle}>Try a different movement type or date range.</Text></View>
       ) : (
-        <ScrollView contentContainerStyle={styles.list}>
+        <ScrollView style={styles.movementsList} contentContainerStyle={styles.list}>
           {rows.map((movement) => <MovementCard key={movement.id} item={movement} />)}
         </ScrollView>
       )}
@@ -142,6 +142,7 @@ const styles = StyleSheet.create({
   dates: { flexDirection: 'row', gap: 8, paddingHorizontal: 20, marginTop: 8 },
   dateInput: { flex: 1, minHeight: 48, backgroundColor: colors.white, borderRadius: radius.md, paddingHorizontal: 11, borderWidth: 1, borderColor: colors.border, color: colors.text, fontSize: 12 },
   list: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 12, gap: 12 },
+  movementsList: { flex: 1 },
   card: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 13, borderRadius: radius.lg, backgroundColor: colors.white },
   movementIcon: { width: 40, height: 40, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   productName: { color: colors.text, fontSize: 14, fontWeight: '700' },

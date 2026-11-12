@@ -163,6 +163,7 @@ export default function Stock() {
         <View style={styles.list}>{[0, 1, 2, 3].map((item) => <Skeleton key={item} height={72} radius={16} />)}</View>
       ) : products.length === 0 ? (
         <ScrollView
+          style={styles.productList}
           contentContainerStyle={styles.emptyRefresh}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void loadProducts(true)} tintColor={colors.primary} />}
         >
@@ -174,6 +175,7 @@ export default function Stock() {
         </ScrollView>
       ) : (
         <FlatList
+          style={styles.productList}
           data={products}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.list}
@@ -263,6 +265,7 @@ const styles = StyleSheet.create({
   metricLabel: { color: colors.textSecondary, fontSize: 13, fontWeight: '600', flexShrink: 1 },
   metricValue: { color: colors.text, fontSize: 18, fontWeight: '800', marginTop: 2 },
   list: { paddingHorizontal: Spacing.five, paddingTop: 8, paddingBottom: 90, gap: 8 },
+  productList: { flex: 1 },
   state: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: Spacing.five },
   emptyRefresh: { flexGrow: 1 },
   error: { color: colors.danger, textAlign: 'center', lineHeight: 22 },

@@ -14,10 +14,10 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
-import { CircleDollarSign, Phone, Search, UserPlus, Users, X } from 'lucide-react-native';
+import { CircleDollarSign, Search, UserPlus, Users, X } from 'lucide-react-native';
 
 import { useAuth } from '@/components/AuthProvider';
-import { Badge, Card, Chip, EmptyState, FAB, IconButton, ListRow, ScreenHeader, Skeleton } from '@/components/ds';
+import { Chip, EmptyState, FAB, IconButton, ListRow, ScreenHeader, Skeleton } from '@/components/ds';
 import { Button } from '@/components/ui';
 import { colors, radius, Spacing, typography } from '@/constants/theme';
 import { friendlyErrorMessage } from '@/lib/errors';
@@ -38,7 +38,6 @@ export default function Customers() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
-  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
@@ -140,7 +139,7 @@ export default function Customers() {
           tone: balance > 0 ? 'danger' : 'neutral',
         }}
         chevron
-        onPress={() => setSelectedCustomer(item)}
+        onPress={() => router.push({ pathname: '/customers/[id]', params: { id: item.id } })}
         accessibilityLabel={`${item.name}, ${item.phone || 'no phone number'}, ${balance > 0 ? `owes ${formatSLE(balance)}` : 'settled'}. View customer details`}
       />
     );
@@ -252,36 +251,6 @@ export default function Customers() {
         </KeyboardAvoidingView>
       </Modal>
 
-      <Modal visible={selectedCustomer !== null} animationType="fade" transparent onRequestClose={() => setSelectedCustomer(null)}>
-        <View style={styles.detailModalRoot}>
-          <Pressable style={styles.scrim} onPress={() => setSelectedCustomer(null)} accessibilityRole="button" accessibilityLabel="Close customer details" />
-          <Card style={styles.detailCard}>
-            <View style={styles.modalHeader}>
-              <View style={styles.modalTitleGroup}>
-                <Text style={styles.modalTitle}>Customer</Text>
-                <Text style={styles.modalSubtitle}>Basic customer details</Text>
-              </View>
-              <IconButton icon={X} label="Close customer details" onPress={() => setSelectedCustomer(null)} />
-            </View>
-            {selectedCustomer ? (
-              <>
-                <Text style={styles.detailName}>{selectedCustomer.name}</Text>
-                <View style={styles.detailPhone}>
-                  <Phone size={17} color={colors.textSecondary} />
-                  <Text style={styles.detailPhoneText}>{selectedCustomer.phone || 'No phone number'}</Text>
-                </View>
-                <Badge
-                  label={(selectedCustomer.balance_minor ?? 0) > 0
-                    ? `Owes ${formatSLE(selectedCustomer.balance_minor ?? 0)}`
-                    : 'Settled'}
-                  tone={(selectedCustomer.balance_minor ?? 0) > 0 ? 'danger' : 'neutral'}
-                />
-                <Text style={styles.comingSoon}>Full profile coming soon.</Text>
-              </>
-            ) : null}
-          </Card>
-        </View>
-      </Modal>
     </SafeAreaView>
   );
 }
@@ -340,7 +309,6 @@ const styles = StyleSheet.create({
   retry: { minHeight: 48, justifyContent: 'center', paddingHorizontal: Spacing.four },
   retryText: { color: colors.primaryDark, ...typography.label },
   modalRoot: { flex: 1, justifyContent: 'flex-end' },
-  detailModalRoot: { flex: 1, justifyContent: 'center', padding: Spacing.four },
   scrim: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(0, 0, 0, 0.38)' },
   formSheet: {
     maxHeight: '90%',
@@ -370,9 +338,4 @@ const styles = StyleSheet.create({
   },
   multilineField: { minHeight: 92, paddingTop: Spacing.three },
   formError: { color: colors.danger, ...typography.caption, marginBottom: Spacing.three },
-  detailCard: { padding: Spacing.four },
-  detailName: { color: colors.text, ...typography.heading, marginTop: Spacing.two },
-  detailPhone: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, marginVertical: Spacing.three },
-  detailPhoneText: { color: colors.textSecondary, ...typography.body },
-  comingSoon: { color: colors.textSecondary, ...typography.body, marginTop: Spacing.four },
 });
