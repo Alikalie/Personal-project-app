@@ -31,11 +31,14 @@ export default function Screen({ title, subtitle, back = false, footer, children
 
         {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
 
-        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          contentContainerStyle={styles.content}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
           {children}
+          {footer ? <View style={styles.footer}>{footer}</View> : null}
         </ScrollView>
-
-        {footer ? <View style={styles.footer}>{footer}</View> : null}
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -56,6 +59,6 @@ const styles = StyleSheet.create({
   },
   title: { flex: 1, fontSize: 26, fontWeight: '800', color: colors.text, letterSpacing: -0.5 },
   subtitle: { fontSize: 15, color: colors.textSecondary, marginBottom: 18, lineHeight: 22 },
-  content: { paddingBottom: 18 },
-  footer: { paddingBottom: 18, paddingTop: 8 },
+  content: { paddingBottom: 24, flexGrow: 1 },
+  footer: { paddingTop: 18 },
 });

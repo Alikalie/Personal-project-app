@@ -99,6 +99,10 @@ export default function More() {
         <SettingsGroup title="Help">
           {role === 'owner' ? <><ListRow title="Subscription and pricing" icon={CreditCard} chevron onPress={() => router.push('/settings/subscription')} /><View style={styles.divider} /></> : null}
           <ListRow title="Help and support" icon={CircleHelp} chevron onPress={() => router.push('/settings/help')} />
+          <View style={styles.divider} />
+          <ListRow title="Privacy Policy" icon={FileText} chevron onPress={() => router.push({ pathname: '/legal/[type]', params: { type: 'privacy' } })} />
+          <View style={styles.divider} />
+          <ListRow title="Terms and Conditions" icon={FileText} chevron onPress={() => router.push({ pathname: '/legal/[type]', params: { type: 'terms' } })} />
         </SettingsGroup>
         {isPlatformAdmin(admin) ? (
           <SettingsGroup title="Admin">
@@ -110,7 +114,7 @@ export default function More() {
             onPress={confirmLogout}
             disabled={loggingOut}
             accessibilityRole="button"
-            accessibilityLabel="Log out of SaloneBiz Manager"
+            accessibilityLabel="Log out of MiShop"
             accessibilityState={{ disabled: loggingOut, busy: loggingOut }}
             style={styles.logout}
           >

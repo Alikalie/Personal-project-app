@@ -3,6 +3,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import { Image } from 'expo-image';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { ArrowDownLeft, ArrowUpRight, Boxes, ChevronDown, ChevronUp, Pencil, Plus } from 'lucide-react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/ui';
 import { ScreenHeader } from '@/components/ds';
@@ -66,68 +67,78 @@ export default function ProductDetails() {
   const stockValue = product.quantity * product.cost_price_minor;
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <ScreenHeader title="Product details" onBack={() => router.back()} />
-      <View style={styles.hero}>
-        {product.image_url
-          ? <Image source={{ uri: product.image_url }} style={styles.productImage} contentFit="cover" />
-          : <View style={styles.placeholder}><Boxes size={42} color={colors.primary} /></View>}
-        <Text style={styles.name}>{product.name}</Text>
-        <Text style={styles.category}>{product.category_name ?? 'Uncategorised'}</Text>
-      </View>
-
-      <View style={styles.actions}>
-        <Action primary icon={ArrowDownLeft} label="Stock in" disabled={!canWrite} onPress={() => router.push({ pathname: '/products/adjust', params: { id: product.id, type: 'stock_in' } })} />
-        <Action icon={ArrowUpRight} label="Stock out" disabled={!canWrite} onPress={() => router.push({ pathname: '/products/adjust', params: { id: product.id, type: 'stock_out' } })} />
-        <Action icon={Pencil} label="Edit" disabled={!canWrite} onPress={() => router.push({ pathname: '/products/edit/[id]', params: { id: product.id } })} />
-      </View>
-      {!canWrite && <Text style={styles.readOnly}>You have read-only stock access.</Text>}
-
-      <View style={styles.quantityCard}>
-        <Text style={styles.quantityLabel}>Current quantity</Text>
-        <Text style={styles.quantityValue}>{product.quantity}</Text>
-      </View>
-      <View style={styles.card}>
-        <DataRow label="Selling price" value={formatSLE(product.selling_price_minor)} />
-        {canWrite ? <DataRow label="Purchase price" value={formatSLE(product.cost_price_minor)} last /> : null}
-      </View>
-      {canWrite ? <Text style={styles.marginText}>Estimated margin: {margin}</Text> : null}
-
-      <Pressable
-        onPress={() => setShowMoreDetails((value) => !value)}
-        style={styles.moreDetails}
-        accessibilityRole="button"
-        accessibilityState={{ expanded: showMoreDetails }}
-        accessibilityLabel={showMoreDetails ? 'Hide more product details' : 'Show more product details'}
-      >
-        <Text style={styles.section}>More details</Text>
-        {showMoreDetails ? <ChevronUp size={20} color={colors.primaryDark} /> : <ChevronDown size={20} color={colors.primaryDark} />}
-      </Pressable>
-      {showMoreDetails ? (
-        <View style={styles.card}>
-          <DataRow label="Product code" value={product.sku || '—'} />
-          <DataRow label="Barcode" value={product.barcode || '—'} />
-          <DataRow label="Low-stock threshold" value={String(product.low_stock_threshold)} last={!canWrite} />
-          {canWrite ? <DataRow label="Stock value at cost" value={formatSLE(stockValue)} last /> : null}
+    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right', 'bottom']}>
+      <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+        <ScreenHeader title="Product details" onBack={() => router.back()} />
+        <View style={styles.hero}>
+          {product.image_url
+            ? <Image source={{ uri: product.image_url }} style={styles.productImage} contentFit="cover" />
+            : <View style={styles.placeholder}><Boxes size={42} color={colors.primary} /></View>}
+          <Text style={styles.name}>{product.name}</Text>
+          <Text style={styles.category}>{product.category_name ?? 'Uncategorised'}</Text>
         </View>
-      ) : null}
 
-      <View style={styles.movementHeader}>
-        <Text style={styles.section}>Recent stock movements</Text>
-        <Pressable onPress={() => router.push({ pathname: '/products/movements', params: { productId: product.id } })}>
-          <Text style={styles.link}>View all</Text>
-        </Pressable>
-      </View>
-      {movements.length === 0 ? (
-        <View style={styles.card}><Text style={styles.muted}>No stock movements yet.</Text></View>
-      ) : movements.slice(0, 5).map((movement) => <MovementRow key={movement.id} item={movement} />)}
+        <View style={styles.actions}>
+          <Action primary icon={ArrowDownLeft} label="Stock in" disabled={!canWrite} onPress={() => router.push({ pathname: '/products/adjust', params: { id: product.id, type: 'stock_in' } })} />
+          <Action icon={ArrowUpRight} label="Stock out" disabled={!canWrite} onPress={() => router.push({ pathname: '/products/adjust', params: { id: product.id, type: 'stock_out' } })} />
+          <Action icon={Pencil} label="Edit" disabled={!canWrite} onPress={() => router.push({ pathname: '/products/edit/[id]', params: { id: product.id } })} />
+        </View>
+        {!canWrite && <Text style={styles.readOnly}>You have read-only stock access.</Text>}
 
-      {canWrite && (
-        <Pressable onPress={() => router.push({ pathname: '/products/adjust', params: { id: product.id, type: 'adjustment' } })} style={styles.adjustLink}>
-          <Plus size={18} color={colors.primary} /><Text style={styles.link}>Make a stock adjustment</Text>
+        <View style={styles.quantityCard}>
+          <Text style={styles.quantityLabel}>Current quantity</Text>
+          <Text style={styles.quantityValue}>{product.quantity}</Text>
+        </View>
+        <View style={styles.card}>
+          <DataRow label="Selling price" value={formatSLE(product.selling_price_minor)} />
+          {canWrite ? <DataRow label="Purchase price" value={formatSLE(product.cost_price_minor)} last /> : null}
+        </View>
+        {canWrite ? <Text style={styles.marginText}>Estimated margin: {margin}</Text> : null}
+
+        <Pressable
+          onPress={() => setShowMoreDetails((value) => !value)}
+          style={styles.moreDetails}
+          accessibilityRole="button"
+          accessibilityState={{ expanded: showMoreDetails }}
+          accessibilityLabel={showMoreDetails ? 'Hide more product details' : 'Show more product details'}
+        >
+          <Text style={styles.section}>More details</Text>
+          {showMoreDetails ? <ChevronUp size={20} color={colors.primaryDark} /> : <ChevronDown size={20} color={colors.primaryDark} />}
         </Pressable>
-      )}
-    </ScrollView>
+        {showMoreDetails ? (
+          <View style={styles.card}>
+            <DataRow label="Product code" value={product.sku || '—'} />
+            <DataRow label="Barcode" value={product.barcode || '—'} />
+            <DataRow label="Low-stock threshold" value={String(product.low_stock_threshold)} last={!canWrite} />
+            {canWrite ? <DataRow label="Stock value at cost" value={formatSLE(stockValue)} last /> : null}
+          </View>
+        ) : null}
+
+        <View style={styles.movementHeader}>
+          <Text style={styles.section}>Recent stock movements</Text>
+          <Pressable
+            onPress={() => router.push({ pathname: '/products/movements', params: { productId: product.id } })}
+            style={styles.viewAll}
+            accessibilityRole="button"
+          >
+            <Text style={styles.link}>View all</Text>
+          </Pressable>
+        </View>
+        {movements.length === 0 ? (
+          <View style={styles.card}><Text style={styles.muted}>No stock movements yet.</Text></View>
+        ) : movements.slice(0, 5).map((movement) => <MovementRow key={movement.id} item={movement} />)}
+
+        {canWrite && (
+          <Pressable
+            onPress={() => router.push({ pathname: '/products/adjust', params: { id: product.id, type: 'adjustment' } })}
+            style={styles.adjustLink}
+            accessibilityRole="button"
+          >
+            <Plus size={18} color={colors.primary} /><Text style={styles.link}>Make a stock adjustment</Text>
+          </Pressable>
+        )}
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
@@ -165,26 +176,29 @@ function MovementRow({ item }: { item: StockMovement }) {
 
 function StateView({ loading = false, message, onRetry }: { loading?: boolean; message: string; onRetry?: () => void }) {
   return (
-    <View style={styles.state}>
-      {loading && <ActivityIndicator color={colors.primary} />}
-      <Text style={[styles.muted, { marginTop: loading ? 12 : 0 }]}>{message}</Text>
-      {onRetry && <View style={{ width: '100%', maxWidth: 300, marginTop: 16 }}><Button label="Try again" onPress={onRetry} /></View>}
-    </View>
+    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right', 'bottom']}>
+      <View style={styles.state}>
+        {loading && <ActivityIndicator color={colors.primary} />}
+        <Text style={[styles.muted, { marginTop: loading ? 12 : 0 }]}>{message}</Text>
+        {onRetry && <View style={{ width: '100%', maxWidth: 300, marginTop: 16 }}><Button label="Try again" onPress={onRetry} /></View>}
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: { flex: 1, backgroundColor: colors.background },
   screen: { flex: 1, backgroundColor: colors.background },
-  content: { paddingHorizontal: 18, paddingBottom: 36 },
+  content: { paddingHorizontal: 20, paddingTop: 4, paddingBottom: 36 },
   hero: { alignItems: 'center', backgroundColor: colors.white, borderRadius: radius.xl, padding: 20, ...shadow },
   productImage: { width: '100%', height: 210, borderRadius: radius.lg, backgroundColor: colors.primaryLight },
   placeholder: { width: '100%', height: 160, borderRadius: radius.lg, backgroundColor: colors.primaryLight, alignItems: 'center', justifyContent: 'center' },
   name: { color: colors.text, fontSize: 23, fontWeight: '800', marginTop: 14, textAlign: 'center' },
   category: { color: colors.textSecondary, marginTop: 5 },
-  actions: { flexDirection: 'row', gap: 8, marginTop: 12 },
-  action: { flex: 1, minHeight: 52, borderRadius: radius.md, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 6 },
+  actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 },
+  action: { flexGrow: 1, flexBasis: 96, minWidth: 88, minHeight: 52, paddingHorizontal: 8, borderRadius: radius.md, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 6 },
   primaryAction: { backgroundColor: colors.primary, borderColor: colors.primary },
-  actionText: { color: colors.text, fontWeight: '700', fontSize: 12 },
+  actionText: { color: colors.text, fontWeight: '700', fontSize: 12, flexShrink: 1, textAlign: 'center' },
   primaryActionText: { color: colors.white },
   readOnly: { color: colors.textSecondary, textAlign: 'center', marginTop: 12 },
   quantityCard: { marginTop: 12, padding: 16, backgroundColor: colors.primaryDark, borderRadius: radius.lg, alignItems: 'center' },
@@ -197,7 +211,8 @@ const styles = StyleSheet.create({
   rowBorder: { borderBottomWidth: 1, borderColor: colors.border },
   dataLabel: { color: colors.textSecondary, fontSize: 13 },
   dataValue: { color: colors.text, fontSize: 14, fontWeight: '700', textAlign: 'right', flexShrink: 1 },
-  movementHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 22, marginBottom: 10 },
+  movementHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 22, marginBottom: 10 },
+  viewAll: { minHeight: 48, minWidth: 48, alignItems: 'flex-end', justifyContent: 'center' },
   section: { fontSize: 17, fontWeight: '800', color: colors.text },
   link: { color: colors.primary, fontWeight: '700' },
   muted: { color: colors.textSecondary, textAlign: 'center', lineHeight: 22 },

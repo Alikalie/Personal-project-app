@@ -22,7 +22,7 @@ function safeMinor(value: number, label: string): number {
 
 export function receiptBusiness(settings: ReceiptBusinessSettings): ReceiptBusiness {
   return {
-    name: settings.name?.trim() || 'SaloneBiz business',
+    name: settings.name?.trim() || 'Your business',
     address: settings.address?.trim() || null,
     phone: settings.phone?.trim() || null,
     header: settings.receipt_header?.trim() || null,

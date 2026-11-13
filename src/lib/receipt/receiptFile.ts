@@ -12,7 +12,7 @@ const savedDirectoryKey = '@salonebiz/receipt-download-directory';
 
 function safeReceiptName(receiptNo: string): string {
   const safe = receiptNo.replace(/[^A-Za-z0-9_-]/g, '-').slice(0, 60) || 'receipt';
-  return `SaloneBiz-Receipt-${safe}.pdf`;
+  return `MiShop-Receipt-${safe}.pdf`;
 }
 
 function rawErrorText(error: unknown): string {

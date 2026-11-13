@@ -9,7 +9,7 @@ import { Button } from '@/components/ui';
 import { useAuth } from '@/components/AuthProvider';
 import { Card, ListRow } from '@/components/ds';
 import { SettingsPage } from '@/components/settings/SettingsPage';
-import { support } from '@/constants/support';
+import { usePublicAppSettings } from '@/components/PublicAppSettingsProvider';
 import { colors, minTouchTarget, Spacing, typography } from '@/constants/theme';
 
 const faq = [
@@ -22,6 +22,7 @@ const faq = [
 
 export default function HelpSettings() {
   const { ctx } = useAuth();
+  const { settings } = usePublicAppSettings();
   const [expanded, setExpanded] = useState<number | null>(null);
   const appVersion = Constants.expoConfig?.version ?? 'Unknown';
 
@@ -43,18 +44,18 @@ export default function HelpSettings() {
       `Device: ${device || 'Unknown'}`,
       `User ID: ${ctx?.id ?? 'Unknown'}`,
     ].join('\n');
-    void openContact(`mailto:${support.email}?subject=${encodeURIComponent('SaloneBiz Manager problem report')}&body=${encodeURIComponent(body)}`, 'Email');
+    void openContact(`mailto:${settings.supportEmail}?subject=${encodeURIComponent(`${settings.appName} problem report`)}&body=${encodeURIComponent(body)}`, 'Email');
   };
 
-  const phone = support.phoneNumber.replace(/[^\d+]/g, '');
-  const whatsapp = support.whatsappNumber.replace(/\D/g, '');
+  const phone = settings.supportPhone.replace(/[^\d+]/g, '');
+  const whatsapp = settings.supportWhatsapp.replace(/\D/g, '');
 
   return (
     <SettingsPage title="Help and support" subtitle="Get in touch or find a quick answer.">
       <Card style={styles.contacts}>
         <ListRow icon={MessageCircle} title="WhatsApp" subtitle="Chat with support" chevron onPress={() => void openContact(`https://wa.me/${whatsapp}`, 'WhatsApp')} />
-        <ListRow icon={Phone} title="Call support" subtitle={support.phoneNumber} chevron onPress={() => void openContact(`tel:${phone}`, 'phone')} />
-        <ListRow icon={Mail} title="Email support" subtitle={support.email} chevron onPress={() => void openContact(`mailto:${support.email}`, 'Email')} />
+        <ListRow icon={Phone} title="Call support" subtitle={settings.supportPhone} chevron onPress={() => void openContact(`tel:${phone}`, 'phone')} />
+        <ListRow icon={Mail} title="Email support" subtitle={settings.supportEmail} chevron onPress={() => void openContact(`mailto:${settings.supportEmail}`, 'Email')} />
       </Card>
 
       <Text style={styles.sectionTitle}>Frequently asked questions</Text>
@@ -81,7 +82,7 @@ export default function HelpSettings() {
       </Card>
 
       <Card style={styles.versionCard}>
-        <Text style={styles.version}>SaloneBiz Manager · Version {appVersion}</Text>
+        <Text style={styles.version}>{settings.appName} · Version {appVersion}</Text>
         <Button label="Report a problem" variant="outline" onPress={reportProblem} />
       </Card>
     </SettingsPage>

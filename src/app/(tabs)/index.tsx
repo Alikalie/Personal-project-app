@@ -67,7 +67,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
-  const [selectedDay, setSelectedDay] = useState<number | null>(null);
+  const [selectedDay, setSelectedDay] = useState<number>(6);
 
   const load = useCallback(async (refresh = false) => {
     if (!ctx?.businessId) {
@@ -79,28 +79,28 @@ export default function Dashboard() {
     else setLoading(true);
     setError('');
     try {
-      setData(await getDashboard(ctx.businessId));
+      setData(await getDashboard(ctx.businessId, showProfit));
     } catch (loadError) {
       setError(friendlyErrorMessage(loadError));
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [ctx?.businessId]);
+  }, [ctx?.businessId, showProfit]);
 
   const refreshAfterSale = useCallback(async (businessId: string) => {
     if (ctx?.businessId !== businessId) return;
     setRefreshing(true);
     setError('');
     try {
-      setData(await getDashboard(businessId));
+      setData(await getDashboard(businessId, showProfit));
     } catch (refreshError) {
       setError(friendlyErrorMessage(refreshError));
       throw refreshError;
     } finally {
       setRefreshing(false);
     }
-  }, [ctx?.businessId]);
+  }, [ctx?.businessId, showProfit]);
 
   useEffect(() => subscribeToDashboardRefresh(refreshAfterSale), [refreshAfterSale]);
   useFocusEffect(useCallback(() => {
@@ -142,7 +142,7 @@ export default function Dashboard() {
   const max = Math.max(0, ...data.weekSales.map((item) => item.value));
   const margin = data.todaySales > 0 ? Math.round((data.grossProfit * 100) / data.todaySales) : 0;
   const noSales = data.weekSales.every((item) => item.value === 0);
-  const dayIndex = selectedDay ?? data.weekSales.length - 1;
+  const dayIndex = Math.min(selectedDay, data.weekSales.length - 1);
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
       <StatusBar style="dark" />
@@ -186,7 +186,13 @@ export default function Dashboard() {
         <View style={styles.quickActions}>
           <QuickAction icon={ShoppingCart} label="New sale" onPress={() => router.push('/(tabs)/sales')} />
           <QuickAction icon={Package} label="Add product" disabled={!canWrite} onPress={() => router.push('/products/new')} />
-          <QuickAction icon={Wallet} label="Add expense" disabled />
+          {canWrite ? (
+            <QuickAction
+              icon={Wallet}
+              label="Add expense"
+              onPress={() => router.push('/expenses')}
+            />
+          ) : null}
           <QuickAction
             icon={UserPlus}
             label="Add customer"
@@ -222,11 +228,20 @@ export default function Dashboard() {
 
         <Card style={styles.chartCard}>
           <SectionHeader title="Weekly sales" />
-          {selectedDay !== null && (
-            <Text style={styles.selectedAmount} accessibilityLiveRegion="polite">
-              {data.weekSales[dayIndex].day}: {formatSLE(data.weekSales[dayIndex].value)}
-            </Text>
-          )}
+          <View style={styles.selectedDaySummary} accessibilityLiveRegion="polite">
+            <Text style={styles.selectedDayName}>{data.weekSales[dayIndex].day}, {data.weekSales[dayIndex].date}</Text>
+            <Text style={styles.selectedAmount}>Sales: {formatSLE(data.weekSales[dayIndex].value)}</Text>
+            {showProfit ? (
+              <View style={styles.selectedProfitRow}>
+                <Text style={styles.selectedAmount}>Gross profit: {formatSLE(data.weekSales[dayIndex].profit)}</Text>
+                <Text style={styles.selectedMargin}>
+                  {data.weekSales[dayIndex].value > 0
+                    ? `${Math.round((data.weekSales[dayIndex].profit * 100) / data.weekSales[dayIndex].value)}% margin`
+                    : '0% margin'}
+                </Text>
+              </View>
+            ) : null}
+          </View>
           <View style={styles.chartWrap}>
             <View style={styles.axisLabels}>
               <Text style={styles.axisLabel}>{formatSLE(max)}</Text>
@@ -241,7 +256,7 @@ export default function Dashboard() {
                     key={`${item.day}-${index}`}
                     onPress={() => setSelectedDay(index)}
                     accessibilityRole="button"
-                    accessibilityLabel={`${item.day} sales ${formatSLE(item.value)}`}
+                    accessibilityLabel={`${item.day}, ${item.date}, sales ${formatSLE(item.value)}${showProfit ? `, gross profit ${formatSLE(item.profit)}` : ''}`}
                     style={styles.barColumn}
                   >
                     <View style={[styles.barTrack, { height: 108 }]}>
@@ -252,6 +267,30 @@ export default function Dashboard() {
                 );
               })}
             </View>
+          </View>
+          <View style={styles.dailyRows}>
+            {data.weekSales.map((item, index) => (
+              <Pressable
+                key={`${item.date}-summary`}
+                onPress={() => setSelectedDay(index)}
+                style={[styles.dailyRow, index === dayIndex && styles.dailyRowSelected]}
+                accessibilityRole="button"
+                accessibilityState={{ selected: index === dayIndex }}
+              >
+                <View style={styles.dailyDate}>
+                  <Text style={styles.dailyDay}>{item.day}</Text>
+                  <Text style={styles.dailyDateText}>{item.date}</Text>
+                </View>
+                <View style={styles.dailyValues}>
+                  <Text style={styles.dailySales}>{formatSLE(item.value)}</Text>
+                  {showProfit ? (
+                    <Text style={styles.dailyProfit}>
+                      {formatSLE(item.profit)} · {item.value > 0 ? `${Math.round((item.profit * 100) / item.value)}%` : '0%'}
+                    </Text>
+                  ) : null}
+                </View>
+              </Pressable>
+            ))}
           </View>
           {noSales && <Text style={styles.emptyMessage}>Sales will appear here after your first sale.</Text>}
         </Card>
@@ -341,7 +380,20 @@ const styles = StyleSheet.create({
   bar: { width: '55%', minWidth: 5, maxWidth: 20, borderRadius: 7 },
   barLabel: { color: colors.textSecondary, fontSize: 12 },
   currentDay: { color: colors.primaryDark, fontWeight: '800' },
-  selectedAmount: { color: colors.primaryDark, fontSize: 13, fontWeight: '700', marginTop: 6 },
+  selectedDaySummary: { marginTop: 6, gap: 3 },
+  selectedDayName: { color: colors.textSecondary, fontSize: 12, fontWeight: '600' },
+  selectedAmount: { color: colors.primaryDark, fontSize: 13, fontWeight: '700' },
+  selectedProfitRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 4 },
+  selectedMargin: { color: colors.textSecondary, fontSize: 12, fontWeight: '600' },
+  dailyRows: { marginTop: Spacing.three, borderTopWidth: 1, borderTopColor: colors.border },
+  dailyRow: { minHeight: 54, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: Spacing.two, paddingVertical: Spacing.two, borderBottomWidth: 1, borderBottomColor: colors.border },
+  dailyRowSelected: { backgroundColor: colors.primaryLight, marginHorizontal: -Spacing.three, paddingHorizontal: Spacing.three },
+  dailyDate: { minWidth: 76 },
+  dailyDay: { color: colors.text, fontSize: 13, fontWeight: '700' },
+  dailyDateText: { color: colors.textSecondary, fontSize: 11, marginTop: 2 },
+  dailyValues: { alignItems: 'flex-end', flexShrink: 1 },
+  dailySales: { color: colors.text, fontSize: 13, fontWeight: '700' },
+  dailyProfit: { color: colors.textSecondary, fontSize: 11, marginTop: 2 },
   transactions: { gap: 8 },
   disabled: { opacity: 0.5 },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },

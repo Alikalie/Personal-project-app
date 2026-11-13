@@ -368,7 +368,7 @@ export async function getReceiptData(saleId: string): Promise<SaleReceiptData> {
       const mimeType = extension === 'png' ? 'image/png' : extension === 'webp' ? 'image/webp' : 'image/jpeg';
       const result = await FileSystem.downloadAsync(
         signedUrl.signedUrl,
-        `${FileSystem.cacheDirectory}salonebiz-receipt-logo-${Date.now()}`,
+        `${FileSystem.cacheDirectory}mishop-receipt-logo-${Date.now()}`,
       );
       downloadedUri = result.uri;
       const base64 = await FileSystem.readAsStringAsync(result.uri, { encoding: FileSystem.EncodingType.Base64 });

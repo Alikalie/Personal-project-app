@@ -4,8 +4,11 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Button, Screen } from '@/components/ui';
 import { colors } from '@/constants/theme';
+import { usePublicAppSettings } from '@/components/PublicAppSettingsProvider';
+import { LegalLinks } from '@/components/LegalLinks';
 
 export default function Welcome() {
+  const { settings } = usePublicAppSettings();
   return (
     <Screen footer={
       <>
@@ -13,6 +16,7 @@ export default function Welcome() {
         <Pressable onPress={() => router.push('/login')} style={styles.loginLink}>
           <Text style={styles.loginText}>Already have an account? <Text style={styles.loginBold}>Log in</Text></Text>
         </Pressable>
+        <LegalLinks centered />
       </>
     }>
       <View style={styles.hero}>
@@ -20,8 +24,10 @@ export default function Welcome() {
           source={require('../../assets/images/sml-logo-tight.png')}
           style={styles.logo}
           contentFit="contain"
-          accessibilityLabel="SML business logo"
+          accessibilityLabel="MiShop logo"
         />
+        <Text style={styles.brand}>{settings.appName}</Text>
+        <Text style={styles.tagline}>{settings.tagline}</Text>
         <Text style={styles.title}>Sell, track stock, and manage customers.</Text>
         <Text style={styles.subtitle}>
           Keep your shop organised from one simple dashboard.
@@ -34,6 +40,8 @@ export default function Welcome() {
 const styles = StyleSheet.create({
   hero: { marginTop: 20, alignItems: 'center' },
   logo: { width: '100%', maxWidth: 300, height: 168 },
+  brand: { fontSize: 24, fontWeight: '800', color: colors.primaryDark, marginTop: 4 },
+  tagline: { fontSize: 14, color: colors.textSecondary, marginTop: 4, textAlign: 'center' },
   title: {
     fontSize: 26,
     lineHeight: 34,

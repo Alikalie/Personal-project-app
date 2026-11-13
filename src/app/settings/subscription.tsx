@@ -7,18 +7,19 @@ import { useAuth } from '@/components/AuthProvider';
 import { Card } from '@/components/ds';
 import { InfoMessage, SettingsPage } from '@/components/settings/SettingsPage';
 import { plans } from '@/constants/plans';
-import { support } from '@/constants/support';
 import { colors, radius, Spacing, typography } from '@/constants/theme';
 import { canManageBilling } from '@/lib/permissions';
 import { formatSLE } from '@/lib/money';
+import { usePublicAppSettings } from '@/components/PublicAppSettingsProvider';
 
 export default function SubscriptionSettings() {
   const { ctx } = useAuth();
+  const { settings } = usePublicAppSettings();
   const canManage = canManageBilling(ctx?.business?.role);
 
   const contactUs = async () => {
     try {
-      await Linking.openURL(`mailto:${support.email}?subject=${encodeURIComponent('SaloneBiz Manager plan upgrade')}`);
+      await Linking.openURL(`mailto:${settings.supportEmail}?subject=${encodeURIComponent(`${settings.appName} plan upgrade`)}`);
     } catch (error) {
       console.warn('Unable to open support email', error);
     }

@@ -40,7 +40,7 @@ export function Screen({ children, back, brand, title, subtitle, footer }: {
               source={require('../../assets/images/sml-logo-tight.png')}
               style={s.brandLogo}
               contentFit="contain"
-              accessibilityLabel="SML business logo"
+              accessibilityLabel="MiShop logo"
             />
           )}
           {title && <Text style={s.title}>{title}</Text>}

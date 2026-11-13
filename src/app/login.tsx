@@ -8,6 +8,7 @@ import { useAuth } from '@/components/AuthProvider';
 import { colors } from '@/constants/theme';
 import { friendlyErrorMessage } from '@/lib/errors';
 import { routeFor } from '@/services/authService';
+import { LegalLinks } from '@/components/LegalLinks';
 
 const validEmail = /^\S+@\S+\.\S+$/;
 
@@ -58,6 +59,7 @@ export default function Login() {
       <Pressable onPress={() => router.push('/forgot-password')} style={{ alignSelf: 'flex-end' }}>
         <Text style={{ color: colors.primary, fontWeight: '600' }}>Forgot password?</Text>
       </Pressable>
+      <LegalLinks centered />
     </Screen>
   );
 }

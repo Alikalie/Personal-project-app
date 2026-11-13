@@ -9,7 +9,7 @@ type DashboardData = {
   totalProducts: number;
   lowStock: number;
   outstandingDebts: number;
-  weekSales: { day: string; value: number }[];
+  weekSales: { date: string; day: string; value: number; profit: number }[];
   recentTransactions: {
     id: string;
     receipt: string;
@@ -92,12 +92,15 @@ function customerName(value: unknown): string {
   return typeof name === 'string' && name.trim() ? name : 'Customer';
 }
 
-export async function getDashboard(businessId: string): Promise<DashboardData> {
+export async function getDashboard(businessId: string, includeProfit = false): Promise<DashboardData> {
   const today = dateInFreetown(new Date());
   const firstDay = shiftDate(today, -6);
+  const dailySelect = includeProfit
+    ? 'sold_at, total_minor, gross_profit_minor'
+    : 'sold_at, total_minor';
   const [dailyResult, productsResult, lowStockResult, balanceResult, salesResult] = await Promise.all([
     supabase.from('sales')
-      .select('sold_at, total_minor, gross_profit_minor')
+      .select(dailySelect)
       .eq('business_id', businessId)
       .gte('sold_at', `${firstDay}T00:00:00.000Z`)
       .lt('sold_at', `${shiftDate(today, 1)}T00:00:00.000Z`),
@@ -130,7 +133,7 @@ export async function getDashboard(businessId: string): Promise<DashboardData> {
     const date = dateInFreetown(soldAt);
     const current = salesByDate.get(date) ?? { total: 0, profit: 0 };
     const total = current.total + minorUnits(row.total_minor);
-    const profit = current.profit + minorUnits(row.gross_profit_minor);
+    const profit = current.profit + (includeProfit ? minorUnits(row.gross_profit_minor) : 0);
     if (!Number.isSafeInteger(total) || !Number.isSafeInteger(profit)) {
       throw new Error('The server returned a daily sales total outside the supported range.');
     }
@@ -138,7 +141,13 @@ export async function getDashboard(businessId: string): Promise<DashboardData> {
   }
   const weekSales = Array.from({ length: 7 }, (_, index) => {
     const date = shiftDate(firstDay, index);
-    return { day: weekday(date), value: salesByDate.get(date)?.total ?? 0 };
+    const daily = salesByDate.get(date);
+    return {
+      date,
+      day: weekday(date),
+      value: daily?.total ?? 0,
+      profit: daily?.profit ?? 0,
+    };
   });
   const recentTransactions = rowsOf(salesResult.data).map((row, index) => {
     const receipt = stringOf(row.receipt_no);

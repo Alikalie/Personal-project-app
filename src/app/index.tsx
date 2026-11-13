@@ -5,9 +5,11 @@ import { StatusBar } from 'expo-status-bar';
 import { colors } from '../constants/theme';
 import { useAuth } from '../components/AuthProvider';
 import { routeFor } from '../services/authService';
+import { usePublicAppSettings } from '../components/PublicAppSettingsProvider';
 
 export default function Splash() {
   const { loading, error, ctx, refresh } = useAuth();
+  const { settings } = usePublicAppSettings();
   const [animDone, setAnimDone] = useState(false);
 
   const logoOpacity = useRef(new Animated.Value(0)).current;
@@ -60,11 +62,11 @@ export default function Splash() {
         />
         <Animated.View style={{ opacity: nameOpacity, transform: [{ translateY: nameY }], alignItems: 'center' }}>
           <Text style={s.name}>
-            SaloneBiz <Text style={s.nameAccent}>Manager</Text>
+            {settings.appName}
           </Text>
         </Animated.View>
         <Animated.Text style={[s.tagline, { opacity: tagOpacity }]}>
-          Your Business, Under Control.
+          {settings.tagline}
         </Animated.Text>
       </View>
 
