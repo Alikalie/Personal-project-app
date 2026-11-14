@@ -1,11 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
-import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { Boxes } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/ui';
+import { ProductImage } from '@/components/ProductImage';
 import { ScreenHeader } from '@/components/ds';
 import { useAuth } from '@/components/AuthProvider';
 import { colors, radius } from '@/constants/theme';
@@ -65,7 +64,7 @@ function LowStockRow({ item, canWrite }: { item: Product; canWrite: boolean }) {
     <View style={styles.row}>
       <Pressable onPress={() => router.push({ pathname: '/products/[id]', params: { id: item.id } })} style={styles.rowMain} accessibilityRole="button" accessibilityLabel={`${item.name}, ${item.quantity} left, restock at ${item.low_stock_threshold}`}>
         <View style={styles.productImage}>
-          {item.image_url ? <Image source={{ uri: item.image_url }} style={{ width: '100%', height: '100%' }} contentFit="cover" /> : <Boxes size={25} color={colors.primary} />}
+          <ProductImage imageUrl={item.image_url} style={{ width: '100%', height: '100%' }} />
         </View>
         <View style={{ flex: 1 }}>
           <Text style={styles.productName} numberOfLines={1}>{item.name}</Text>

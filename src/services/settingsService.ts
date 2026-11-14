@@ -19,6 +19,7 @@ export type ReceiptUpdate = {
   receipt_footer: string;
   show_logo_on_receipt: boolean;
 };
+export type BusinessCurrencyUpdate = { currency_code: string };
 
 const logoUrlCache = new Map<string, { url: string; expiresAt: number }>();
 
@@ -36,7 +37,10 @@ export async function updateProfile(profileId: string, input: ProfileUpdate): Pr
   }
 }
 
-export async function updateBusiness(businessId: string, input: BusinessUpdate | ReceiptUpdate | { notify_low_stock: boolean }): Promise<void> {
+export async function updateBusiness(
+  businessId: string,
+  input: BusinessUpdate | ReceiptUpdate | BusinessCurrencyUpdate | { notify_low_stock: boolean },
+): Promise<void> {
   try {
     const { error } = await supabase.from('businesses').update(input).eq('id', businessId);
     if (error) throw error;

@@ -8,7 +8,6 @@ import { useAuth } from '@/components/AuthProvider';
 import { colors } from '@/constants/theme';
 import { friendlyErrorMessage } from '@/lib/errors';
 import { onboarding } from '@/services/onboardingStore';
-import { LegalLinks } from '@/components/LegalLinks';
 
 const validEmail = /^\S+@\S+\.\S+$/;
 
@@ -22,6 +21,7 @@ export default function SignUp() {
   const [requestError, setRequestError] = useState('');
   const [loading, setLoading] = useState(false);
   const [acceptedLegal, setAcceptedLegal] = useState(false);
+  const [marketingConsent, setMarketingConsent] = useState(false);
   const [result, setResult] = useState<'success' | 'confirmation' | null>(null);
   const submitting = useRef(false);
 
@@ -51,7 +51,7 @@ export default function SignUp() {
         profileCode: null,
         businessCode: null,
         platformAdminLevel: null,
-      }, password);
+      }, password, marketingConsent);
       setResult(hasSession ? 'success' : 'confirmation');
     } catch (error) {
       setRequestError(friendlyErrorMessage(error));
@@ -79,7 +79,7 @@ export default function SignUp() {
 
   if (result === 'success') {
     return (
-      <Screen title="Account created successfully" subtitle="Your account is ready to set up."
+      <Screen brand title="Account created successfully" subtitle="Your account is ready to set up."
         footer={<Button label="Continue" onPress={continueToOnboarding} loading={loading} />}
       >
         <View style={{ alignItems: 'center', paddingVertical: 36 }}>
@@ -100,7 +100,7 @@ export default function SignUp() {
 
   if (result === 'confirmation') {
     return (
-      <Screen title="Check your email" subtitle={`We sent a confirmation link to ${email.trim().toLowerCase()}.`}
+      <Screen brand title="Check your email" subtitle={`We sent a confirmation link to ${email.trim().toLowerCase()}.`}
         footer={<Button label="Go to login" onPress={() => router.replace('/login')} />}
       >
         <Text style={{ color: colors.textSecondary, fontSize: 15, lineHeight: 23 }}>
@@ -111,7 +111,7 @@ export default function SignUp() {
   }
 
   return (
-    <Screen back title="Create your account" subtitle="Start managing your business in minutes."
+    <Screen back brand title="Create your account" subtitle="Start managing your business in minutes."
       footer={
         <>
           {!!requestError && <Text style={{ color: colors.danger, marginBottom: 12 }}>{requestError}</Text>}
@@ -131,29 +131,78 @@ export default function SignUp() {
       <Field label="Phone number" icon={Phone} value={phone} onChangeText={setPhone} placeholder="+232 76 000000" keyboardType="phone-pad" error={errors.phone} />
       <Field label="Email" icon={Mail} value={email} onChangeText={setEmail} placeholder="you@example.com" keyboardType="email-address" autoCapitalize="none" error={errors.email} />
       <Field label="Password" icon={Lock} value={password} onChangeText={setPassword} placeholder="At least 6 characters" secure error={errors.password} />
-      <Pressable
-        onPress={() => setAcceptedLegal((value) => !value)}
-        accessibilityRole="checkbox"
-        accessibilityState={{ checked: acceptedLegal }}
-        style={{ minHeight: 52, flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 8 }}
-      >
-        <View style={{
-          width: 24,
-          height: 24,
-          borderRadius: 6,
-          borderWidth: 1.5,
-          borderColor: acceptedLegal ? colors.primary : colors.border,
-          backgroundColor: acceptedLegal ? colors.primary : colors.white,
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}>
-          {acceptedLegal ? <Check size={17} color={colors.white} /> : null}
-        </View>
+      <View style={{ minHeight: 52, flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 8 }}>
+        <Pressable
+          onPress={() => setAcceptedLegal((value) => !value)}
+          accessibilityRole="checkbox"
+          accessibilityLabel="I agree to the Terms and Conditions and Privacy Policy"
+          accessibilityState={{ checked: acceptedLegal }}
+          style={{
+            width: 48,
+            height: 48,
+            borderRadius: 8,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <View style={{
+            width: 24,
+            height: 24,
+            borderRadius: 6,
+            borderWidth: 1.5,
+            borderColor: acceptedLegal ? colors.primary : colors.border,
+            backgroundColor: acceptedLegal ? colors.primary : colors.white,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}>
+            {acceptedLegal ? <Check size={17} color={colors.white} /> : null}
+          </View>
+        </Pressable>
         <Text style={{ flex: 1, color: colors.text, fontSize: 13, lineHeight: 20 }}>
-          I agree to the Terms and Conditions and Privacy Policy.
+          I agree to the{' '}
+          <Text
+            accessibilityRole="link"
+            onPress={() => router.push({ pathname: '/legal/[type]', params: { type: 'terms' } })}
+            style={{ color: colors.primaryDark, fontWeight: '700', textDecorationLine: 'underline' }}
+          >
+            Terms and Conditions
+          </Text>
+          {' '}and{' '}
+          <Text
+            accessibilityRole="link"
+            onPress={() => router.push({ pathname: '/legal/[type]', params: { type: 'privacy' } })}
+            style={{ color: colors.primaryDark, fontWeight: '700', textDecorationLine: 'underline' }}
+          >
+            Privacy Policy
+          </Text>
+          .
         </Text>
-      </Pressable>
-      <LegalLinks />
+      </View>
+      <View style={{ minHeight: 52, flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 4 }}>
+        <Pressable
+          onPress={() => setMarketingConsent((value) => !value)}
+          accessibilityRole="checkbox"
+          accessibilityLabel="I agree to receive optional MiShop product and business updates by email"
+          accessibilityState={{ checked: marketingConsent }}
+          style={{ width: 48, height: 48, alignItems: 'center', justifyContent: 'center' }}
+        >
+          <View style={{
+            width: 24,
+            height: 24,
+            borderRadius: 6,
+            borderWidth: 1.5,
+            borderColor: marketingConsent ? colors.primary : colors.border,
+            backgroundColor: marketingConsent ? colors.primary : colors.white,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}>
+            {marketingConsent ? <Check size={17} color={colors.white} /> : null}
+          </View>
+        </Pressable>
+        <Text style={{ flex: 1, color: colors.textSecondary, fontSize: 13, lineHeight: 20 }}>
+          I agree to receive optional product and business updates by email. You can change this anytime in Email preferences.
+        </Text>
+      </View>
       <Text style={{ height: 8 }} />
     </Screen>
   );

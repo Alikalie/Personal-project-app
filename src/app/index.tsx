@@ -66,7 +66,7 @@ export default function Splash() {
           </Text>
         </Animated.View>
         <Animated.Text style={[s.tagline, { opacity: tagOpacity }]}>
-          {settings.tagline}
+          My Shop, My Records, My Profit
         </Animated.Text>
       </View>
 
@@ -99,9 +99,9 @@ const s = StyleSheet.create({
   circle: { position: 'absolute', borderRadius: 999, backgroundColor: colors.primaryLight },
   center: { alignItems: 'center', paddingHorizontal: 32 },
   logo: { width: 290, height: 193 },
-  name: { marginTop: 4, fontSize: 26, fontWeight: '800', color: colors.primaryDark, letterSpacing: -0.4 },
+  name: { marginTop: 4, fontSize: 34, fontWeight: '800', color: colors.primaryDark, letterSpacing: -0.4 },
   nameAccent: { color: colors.primary },
-  tagline: { marginTop: 8, fontSize: 14, color: colors.textSecondary, letterSpacing: 0.4 },
+  tagline: { marginTop: 8, fontSize: 18, color: colors.textSecondary, letterSpacing: 0.2, textAlign: 'center' },
   footer: { position: 'absolute', bottom: 32, alignItems: 'center', width: '100%' },
   track: { width: 132, height: 4, borderRadius: 2, backgroundColor: colors.primaryLight, overflow: 'hidden' },
   bar: { height: 4, backgroundColor: colors.primary, borderRadius: 2 },

@@ -43,7 +43,7 @@ export default function Login() {
   };
 
   return (
-    <Screen back title="Welcome back" subtitle="Log in to see how your business is doing today."
+    <Screen back brand title="Welcome back" subtitle="Log in to see how your business is doing today."
       footer={
         <>
           {!!error ? <Text style={{ color: colors.danger, marginBottom: 12 }}>{error}</Text> : null}

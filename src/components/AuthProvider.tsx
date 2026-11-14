@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useState, type React
 import type { User } from '@supabase/supabase-js';
 
 import { friendlyErrorMessage } from '@/lib/errors';
+import { setDefaultCurrencyCode } from '@/lib/money';
 import { loadAuthUser, signInWithPassword, signUpWithPassword } from '@/services/authService';
 import { supabase } from '@/lib/supabase';
 
@@ -40,7 +41,11 @@ export type AuthContextValue = {
   ctx: AuthUser | null;
   refresh: () => Promise<AuthUser | null>;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (user: Omit<AuthUser, 'id' | 'businessId' | 'businessName' | 'business'>, password: string) => Promise<boolean>;
+  signUp: (
+    user: Omit<AuthUser, 'id' | 'businessId' | 'businessName' | 'business'>,
+    password: string,
+    marketingConsent: boolean,
+  ) => Promise<boolean>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -58,10 +63,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (sessionError) throw sessionError;
       if (!data.session) {
         setCtx(null);
+        setDefaultCurrencyCode(null);
         return null;
       }
 
       const user = await loadAuthUser(data.session.user);
+      setDefaultCurrencyCode(user.business?.currencyCode ?? null);
       setCtx(user);
       return user;
     } catch (refreshError) {
@@ -80,7 +87,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signUp = useCallback(async (
     user: Omit<AuthUser, 'id' | 'businessId' | 'businessName' | 'business'>,
     password: string,
-  ) => signUpWithPassword(user, password), []);
+    marketingConsent: boolean,
+  ) => signUpWithPassword(user, password, marketingConsent), []);
 
   useEffect(() => {
     let active = true;
@@ -88,6 +96,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!active) return;
       if (!session) {
         setCtx(null);
+        setDefaultCurrencyCode(null);
         setLoading(false);
         setError(null);
         return;
@@ -106,6 +115,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         platformAdminLevel: null,
         business: null,
       });
+      setDefaultCurrencyCode(null);
       setLoading(true);
       setTimeout(() => {
         if (active) void refresh().catch(() => undefined);

@@ -9,6 +9,7 @@ import {
   Globe2,
   KeyRound,
   LogOut,
+  Mail,
   Shield,
   UserRound,
 } from 'lucide-react-native';
@@ -24,6 +25,8 @@ import { clearOnboarding } from '@/services/onboardingStore';
 import { clearProductImageCache } from '@/services/productService';
 import { clearSettingsCaches, signOut } from '@/services/settingsService';
 import { useCart } from '@/components/CartProvider';
+import { clearReceiptDataCache } from '@/lib/receipt/receiptStore';
+import { clearSavedSupportAccess } from '@/services/supportAccessService';
 
 function initials(name: string) {
   return name.trim().split(/\s+/).slice(0, 2).map((part) => part[0]?.toLocaleUpperCase() ?? '').join('') || '?';
@@ -44,12 +47,16 @@ export default function More() {
       onPress: () => {
         if (loggingOut) return;
         setLoggingOut(true);
-        void signOut().then(() => {
+        void signOut().then(async () => {
           clearCart();
           clearOnboarding();
           clearProductImageCache();
           clearSettingsCaches();
+          const cleanup = await Promise.allSettled([clearReceiptDataCache(), clearSavedSupportAccess()]);
           router.replace('/welcome');
+          if (cleanup.some((result) => result.status === 'rejected')) {
+            Alert.alert('Logged out', 'Some cached data could not be cleared. Restart the app before sharing this device.');
+          }
         }).catch((error: unknown) => {
           Alert.alert('Could not log out', error instanceof Error ? error.message : 'Please try again.');
         }).finally(() => setLoggingOut(false));
@@ -86,6 +93,10 @@ export default function More() {
           <ListRow title="My profile" icon={UserRound} chevron onPress={() => router.push('/settings/profile')} />
           <View style={styles.divider} />
           <ListRow title="Change password" icon={KeyRound} chevron onPress={() => router.push('/settings/password')} />
+          <View style={styles.divider} />
+          <ListRow title="Security" icon={Shield} chevron onPress={() => router.push('/settings/security')} />
+          <View style={styles.divider} />
+          <ListRow title="Email preferences" icon={Mail} chevron onPress={() => router.push('/settings/privacy')} />
         </SettingsGroup>
         <SettingsGroup title="Business">
           <ListRow title="Business profile" icon={Building2} chevron onPress={() => router.push('/settings/business')} />

@@ -1,4 +1,4 @@
-import { Linking, StyleSheet, Text, View } from 'react-native';
+import { Alert, Linking, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { Check } from 'lucide-react-native';
 
@@ -10,6 +10,7 @@ import { plans } from '@/constants/plans';
 import { colors, radius, Spacing, typography } from '@/constants/theme';
 import { canManageBilling } from '@/lib/permissions';
 import { formatSLE } from '@/lib/money';
+import { safeContactUrl } from '@/lib/urls';
 import { usePublicAppSettings } from '@/components/PublicAppSettingsProvider';
 
 export default function SubscriptionSettings() {
@@ -18,10 +19,15 @@ export default function SubscriptionSettings() {
   const canManage = canManageBilling(ctx?.business?.role);
 
   const contactUs = async () => {
+    const url = safeContactUrl(`mailto:${settings.supportEmail}?subject=${encodeURIComponent(`${settings.appName} plan upgrade`)}`);
+    if (!url) {
+      Alert.alert('Support unavailable', 'Support contact details are unavailable.');
+      return;
+    }
     try {
-      await Linking.openURL(`mailto:${settings.supportEmail}?subject=${encodeURIComponent(`${settings.appName} plan upgrade`)}`);
-    } catch (error) {
-      console.warn('Unable to open support email', error);
+      await Linking.openURL(url);
+    } catch {
+      console.warn('Unable to open support email');
     }
   };
 

@@ -1,11 +1,11 @@
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Image } from 'expo-image';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
-import { ArrowDownLeft, ArrowUpRight, Boxes, ChevronDown, ChevronUp, Pencil, Plus } from 'lucide-react-native';
+import { ArrowDownLeft, ArrowUpRight, ChevronDown, ChevronUp, Pencil, Plus } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/ui';
+import { ProductImage } from '@/components/ProductImage';
 import { ScreenHeader } from '@/components/ds';
 import { useAuth } from '@/components/AuthProvider';
 import { colors, radius, shadow } from '@/constants/theme';
@@ -71,9 +71,9 @@ export default function ProductDetails() {
       <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
         <ScreenHeader title="Product details" onBack={() => router.back()} />
         <View style={styles.hero}>
-          {product.image_url
-            ? <Image source={{ uri: product.image_url }} style={styles.productImage} contentFit="cover" />
-            : <View style={styles.placeholder}><Boxes size={42} color={colors.primary} /></View>}
+          <View style={styles.placeholder}>
+            <ProductImage imageUrl={product.image_url} style={styles.productImage} />
+          </View>
           <Text style={styles.name}>{product.name}</Text>
           <Text style={styles.category}>{product.category_name ?? 'Uncategorised'}</Text>
         </View>

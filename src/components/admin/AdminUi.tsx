@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Modal,
   Pressable,
@@ -16,6 +16,7 @@ import type { ReactNode } from 'react';
 import { Badge, IconButton, ScreenHeader, Skeleton } from '@/components/ds';
 import { Button } from '@/components/ui';
 import { colors, radius, Spacing, typography } from '@/constants/theme';
+import { endSupportAccess, getSavedSupportAccess, type SupportAccessSession } from '@/services/supportAccessService';
 
 export function AdminScreen({
   title,
@@ -30,9 +31,73 @@ export function AdminScreen({
   onBack?: () => void;
   rightAction?: ReactNode;
 }) {
+  const [supportAccess, setSupportAccess] = useState<SupportAccessSession | null>(null);
+  const [remainingSeconds, setRemainingSeconds] = useState(0);
+  const [endingSupportAccess, setEndingSupportAccess] = useState(false);
+  const [supportError, setSupportError] = useState('');
+  const expirationHandled = useRef<string | null>(null);
+
+  const loadSupportAccess = useCallback(async () => {
+    setSupportAccess(await getSavedSupportAccess());
+  }, []);
+
+  useEffect(() => {
+    void loadSupportAccess().catch((error: unknown) => {
+      console.warn('Support access status could not be loaded:', error);
+      setSupportError('Support access status could not be checked.');
+    });
+  }, [loadSupportAccess]);
+
+  useEffect(() => {
+    if (!supportAccess) return;
+    const updateTime = () => {
+      const remaining = Math.max(0, Math.ceil((supportAccess.expiresAt - Date.now()) / 1000));
+      setRemainingSeconds(remaining);
+      if (remaining === 0 && expirationHandled.current !== supportAccess.id) {
+        expirationHandled.current = supportAccess.id;
+        void endSupportAccess(supportAccess.id).then(() => setSupportAccess(null)).catch((error: unknown) => {
+          console.warn('Expired support session could not be ended:', error);
+          setSupportError('Support access expired. End the session again or retry.');
+        });
+      }
+    };
+    updateTime();
+    const timer = setInterval(updateTime, 1000);
+    return () => clearInterval(timer);
+  }, [supportAccess]);
+
+  const endSupport = async () => {
+    if (!supportAccess || endingSupportAccess) return;
+    setEndingSupportAccess(true);
+    setSupportError('');
+    expirationHandled.current = supportAccess.id;
+    try {
+      await endSupportAccess(supportAccess.id);
+      setSupportAccess(null);
+    } catch (error) {
+      expirationHandled.current = null;
+      console.warn('Support access could not be ended:', error);
+      setSupportError('Could not end support access. Try again.');
+    } finally {
+      setEndingSupportAccess(false);
+    }
+  };
+  const timer = `${String(Math.floor(remainingSeconds / 60)).padStart(2, '0')}:${String(remainingSeconds % 60).padStart(2, '0')}`;
+
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
       <View style={styles.page}>
+        {supportAccess ? (
+          <View style={styles.supportBanner}>
+            <Text style={styles.supportText}>
+              Support access: {supportAccess.businessName}, expires in {timer}
+            </Text>
+            <Pressable onPress={() => void endSupport()} disabled={endingSupportAccess} style={styles.supportEnd} accessibilityRole="button">
+              <Text style={styles.supportEndText}>{endingSupportAccess ? 'Ending…' : 'End now'}</Text>
+            </Pressable>
+          </View>
+        ) : null}
+        {supportError ? <Text style={styles.errorText}>{supportError}</Text> : null}
         <ScreenHeader title={title} subtitle={subtitle} onBack={onBack ?? (() => router.back())} rightAction={rightAction} />
         {children}
       </View>
@@ -276,6 +341,10 @@ const styles = StyleSheet.create({
   loading: { gap: Spacing.two, paddingTop: Spacing.two },
   state: { flex: 1, justifyContent: 'center', alignItems: 'stretch', gap: Spacing.three, padding: Spacing.five },
   errorText: { color: colors.danger, ...typography.body, textAlign: 'center' },
+  supportBanner: { minHeight: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: Spacing.two, paddingHorizontal: Spacing.three, borderRadius: radius.md, backgroundColor: colors.danger },
+  supportText: { flex: 1, color: colors.white, ...typography.label },
+  supportEnd: { minHeight: 48, justifyContent: 'center', paddingHorizontal: Spacing.two },
+  supportEndText: { color: colors.white, ...typography.label, textDecorationLine: 'underline' },
   empty: { color: colors.textSecondary, ...typography.body, textAlign: 'center', paddingVertical: Spacing.seven },
   search: { minHeight: 50, borderRadius: radius.md, paddingHorizontal: Spacing.three, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, color: colors.text, ...typography.body },
   chips: { gap: Spacing.two, paddingVertical: Spacing.two },

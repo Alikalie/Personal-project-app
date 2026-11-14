@@ -24,3 +24,9 @@ export async function loadReceiptData(key: string): Promise<ReceiptData | null> 
   const parsed: unknown = JSON.parse(stored);
   return isReceiptData(parsed) ? parsed : null;
 }
+
+export async function clearReceiptDataCache(): Promise<void> {
+  const keys = await AsyncStorage.getAllKeys();
+  const receiptKeys = keys.filter((key) => key.startsWith('@salonebiz/receipt/'));
+  if (receiptKeys.length) await AsyncStorage.multiRemove(receiptKeys);
+}

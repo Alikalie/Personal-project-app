@@ -14,7 +14,7 @@ export type PublicAppSettings = {
 const storageKey = '@mishop/public-app-settings';
 const defaults: PublicAppSettings = {
   appName: 'MiShop',
-  tagline: 'Your Business, Under Control.',
+  tagline: 'My Shop, My Records, My Profit',
   supportEmail: support.email,
   supportWhatsapp: support.whatsappNumber,
   supportPhone: support.phoneNumber,

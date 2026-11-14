@@ -1,9 +1,11 @@
 import type { User } from '@supabase/supabase-js';
 import type { Href } from 'expo-router';
+import Constants from 'expo-constants';
 
 import type { AuthUser } from '../components/AuthProvider';
 import { friendlyErrorMessage } from '../lib/errors';
 import { supabase } from '../lib/supabase';
+import { acceptSignupConsentIfPending, rememberSignupConsent } from '@/services/legalService';
 
 type BusinessRegistration = {
   businessName: string;
@@ -19,13 +21,40 @@ export function routeFor(ctx: AuthUser | null): Href {
 }
 
 export async function signInWithPassword(email: string, password: string): Promise<void> {
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) throw new Error(friendlyErrorMessage(error));
+  if (data.user) {
+    await syncSignupMarketingConsent(data.user);
+    await acceptSignupConsentIfPending(data.user.id, Constants.expoConfig?.version ?? '1.0.0');
+  }
+}
+
+async function saveMarketingConsent(userId: string, consent: boolean): Promise<void> {
+  const { data, error } = await supabase
+    .from('profiles')
+    .update({ marketing_opt_in: consent })
+    .eq('id', userId)
+    .select('id')
+    .maybeSingle();
+  if (error) throw new Error(friendlyErrorMessage(error));
+  if (!data) throw new Error('Your email preference could not be saved. Please try again.');
+}
+
+async function syncSignupMarketingConsent(user: User): Promise<void> {
+  const consent = user.user_metadata.marketing_consent;
+  if (typeof consent !== 'boolean' || user.user_metadata.marketing_consent_synced === true) return;
+
+  await saveMarketingConsent(user.id, consent);
+  const { error } = await supabase.auth.updateUser({
+    data: { ...user.user_metadata, marketing_consent_synced: true },
+  });
   if (error) throw new Error(friendlyErrorMessage(error));
 }
 
 export async function signUpWithPassword(
   user: { name: string; email: string; phone?: string },
   password: string,
+  marketingConsent = false,
 ): Promise<boolean> {
   const { data, error } = await supabase.auth.signUp({
     email: user.email,
@@ -34,6 +63,9 @@ export async function signUpWithPassword(
       data: {
         full_name: user.name,
         phone: user.phone ?? '',
+        marketing_consent: marketingConsent,
+        marketing_consent_at: marketingConsent ? new Date().toISOString() : null,
+        marketing_consent_synced: false,
       },
     },
   });
@@ -41,7 +73,33 @@ export async function signUpWithPassword(
   if (data.user?.identities?.length === 0) {
     throw new Error(friendlyErrorMessage({ message: 'User already registered' }));
   }
+  if (data.user) await rememberSignupConsent(data.user.id);
+  if (data.user && data.session) {
+    await syncSignupMarketingConsent(data.user);
+    await acceptSignupConsentIfPending(data.user.id, Constants.expoConfig?.version ?? '1.0.0');
+  }
   return data.session !== null;
+}
+
+export async function getMarketingConsent(): Promise<boolean> {
+  const { data: authData, error: authError } = await supabase.auth.getUser();
+  if (authError) throw new Error(friendlyErrorMessage(authError));
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('marketing_opt_in')
+    .eq('id', authData.user.id)
+    .maybeSingle();
+  if (error) throw new Error(friendlyErrorMessage(error));
+  if (!data || typeof data.marketing_opt_in !== 'boolean') {
+    throw new Error('Your email preference is not available yet. Please try again later.');
+  }
+  return data.marketing_opt_in;
+}
+
+export async function setMarketingConsent(consent: boolean): Promise<void> {
+  const { data: authData, error: authError } = await supabase.auth.getUser();
+  if (authError) throw new Error(friendlyErrorMessage(authError));
+  await saveMarketingConsent(authData.user.id, consent);
 }
 
 export async function loadAuthUser(user: User): Promise<AuthUser> {

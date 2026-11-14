@@ -317,6 +317,42 @@ export async function revokePlatformAdmin(userId: string): Promise<void> {
   await refreshAdminOverview();
 }
 
+export async function updateAdminProfile(userId: string, fullName: string, phone: string): Promise<void> {
+  await rpc<unknown>('admin_update_profile', {
+    p_user_id: userId,
+    p_full_name: fullName.trim(),
+    p_phone: phone.trim(),
+  });
+  await refreshAdminOverview();
+}
+
+export async function updateAdminBusiness(businessId: string, input: {
+  name: string;
+  businessType: string;
+  address: string;
+  district: string;
+  phone: string;
+}): Promise<void> {
+  await rpc<unknown>('admin_update_business', {
+    p_business_id: businessId,
+    p_name: input.name.trim(),
+    p_business_type: input.businessType.trim(),
+    p_address: input.address.trim(),
+    p_district: input.district.trim(),
+    p_phone: input.phone.trim(),
+  });
+  await refreshAdminOverview();
+}
+
+export async function deleteAdminBusiness(businessId: string, confirmCode: string): Promise<void> {
+  if (!confirmCode.trim()) throw new Error('Type the business code to confirm.');
+  await rpc<unknown>('admin_delete_business', {
+    p_business_id: businessId,
+    p_confirm_code: confirmCode.trim(),
+  });
+  await refreshAdminOverview();
+}
+
 export async function listPlatformAdmins(): Promise<AdminTeamMember[]> {
   return mapRows(await rpc<unknown>('admin_list_admins'), (value) => {
     const row = objectOf(value);

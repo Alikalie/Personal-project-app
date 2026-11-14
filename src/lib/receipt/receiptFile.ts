@@ -10,11 +10,6 @@ import type { ReceiptData, ReceiptLayout } from '@/lib/receipt/types';
 
 const savedDirectoryKey = '@salonebiz/receipt-download-directory';
 
-function safeReceiptName(receiptNo: string): string {
-  const safe = receiptNo.replace(/[^A-Za-z0-9_-]/g, '-').slice(0, 60) || 'receipt';
-  return `MiShop-Receipt-${safe}.pdf`;
-}
-
 function rawErrorText(error: unknown): string {
   try {
     return JSON.stringify(error, error instanceof Error ? Object.getOwnPropertyNames(error) : undefined);
@@ -35,21 +30,12 @@ export async function createReceiptPdf(data: ReceiptData, layout: ReceiptLayout 
       height: layout === 'compact' ? compactHeight : 842,
     });
     printedUri = printed.uri;
-    const targetUri = `${cacheDirectory}${safeReceiptName(data.receiptNo)}`;
-    await FileSystem.deleteAsync(targetUri, { idempotent: true });
-    const pdfBase64 = await FileSystem.readAsStringAsync(printed.uri, {
-      encoding: FileSystem.EncodingType.Base64,
-    });
-    await FileSystem.writeAsStringAsync(targetUri, pdfBase64, {
-      encoding: FileSystem.EncodingType.Base64,
-    });
-    const info = await FileSystem.getInfoAsync(targetUri);
+    const info = await FileSystem.getInfoAsync(printed.uri);
     if (!info.exists || !('size' in info) || typeof info.size !== 'number' || info.size <= 0) {
       throw new Error('The receipt PDF could not be verified.');
     }
-    await FileSystem.deleteAsync(printed.uri, { idempotent: true });
     printedUri = null;
-    return targetUri;
+    return printed.uri;
   } catch (error) {
     console.warn('Receipt PDF generation failed:', rawErrorText(error));
     if (printedUri) {
@@ -60,6 +46,16 @@ export async function createReceiptPdf(data: ReceiptData, layout: ReceiptLayout 
       }
     }
     throw error;
+  }
+}
+
+export async function isReceiptPdfAvailable(uri: string): Promise<boolean> {
+  try {
+    const info = await FileSystem.getInfoAsync(uri);
+    return info.exists && 'size' in info && typeof info.size === 'number' && info.size > 0;
+  } catch (error) {
+    console.warn('Could not verify cached receipt PDF:', rawErrorText(error));
+    return false;
   }
 }
 

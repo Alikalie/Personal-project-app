@@ -40,7 +40,14 @@
         }
       ],
       "expo-sharing",
-      "expo-web-browser"
+      "expo-web-browser",
+      "expo-secure-store",
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "MiShop uses device authentication to protect your app."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

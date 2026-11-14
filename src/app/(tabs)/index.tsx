@@ -20,6 +20,7 @@ import {
   TrendingUp,
   UserPlus,
   Wallet,
+  X,
 } from 'lucide-react-native';
 import { router } from 'expo-router';
 
@@ -29,6 +30,12 @@ import { colors, radius, shadow, Spacing } from '@/constants/theme';
 import { friendlyErrorMessage } from '@/lib/errors';
 import { formatSLE } from '@/lib/money';
 import { getDashboard, subscribeToDashboardRefresh } from '@/services/dashboardService';
+import {
+  dismissAnnouncement,
+  getDismissedAnnouncementIds,
+  listActiveAnnouncements,
+  type Announcement,
+} from '@/services/contentService';
 
 type Dash = Awaited<ReturnType<typeof getDashboard>>;
 
@@ -68,6 +75,21 @@ export default function Dashboard() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
   const [selectedDay, setSelectedDay] = useState<number>(6);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [dismissedAnnouncements, setDismissedAnnouncements] = useState<string[]>([]);
+
+  const loadAnnouncements = useCallback(async () => {
+    try {
+      const [result, dismissed] = await Promise.all([
+        listActiveAnnouncements(),
+        getDismissedAnnouncementIds(),
+      ]);
+      setAnnouncements(result.items);
+      setDismissedAnnouncements(dismissed);
+    } catch (contentError) {
+      console.warn('Announcements are unavailable:', contentError);
+    }
+  }, []);
 
   const load = useCallback(async (refresh = false) => {
     if (!ctx?.businessId) {
@@ -106,6 +128,9 @@ export default function Dashboard() {
   useFocusEffect(useCallback(() => {
     void load();
   }, [load]));
+  useFocusEffect(useCallback(() => {
+    void loadAnnouncements();
+  }, [loadAnnouncements]));
 
   if (loading && !data) {
     return (
@@ -161,6 +186,21 @@ export default function Dashboard() {
             <Text style={styles.avatarText}>{initials(ctx?.name ?? '')}</Text>
           </View>
         </View>
+
+        {announcements
+          .filter((announcement) => !dismissedAnnouncements.includes(announcement.id))
+          .filter((announcement) => announcement.audience === 'all' || role === 'owner' || role === 'manager')
+          .map((announcement) => (
+            <AnnouncementBanner
+              key={announcement.id}
+              announcement={announcement}
+              onDismiss={() => {
+                void dismissAnnouncement(announcement.id).then(setDismissedAnnouncements).catch((dismissError: unknown) => {
+                  console.warn('Announcement could not be dismissed:', dismissError);
+                });
+              }}
+            />
+          ))}
 
         <View style={styles.hero}>
           <Text style={styles.heroLabel}>Today's sales</Text>
@@ -321,6 +361,29 @@ export default function Dashboard() {
   );
 }
 
+function AnnouncementBanner({ announcement, onDismiss }: {
+  announcement: Announcement;
+  onDismiss: () => void;
+}) {
+  const tone = announcement.severity === 'critical'
+    ? { background: '#FCECEC', foreground: colors.danger, label: 'Important' }
+    : announcement.severity === 'warning'
+      ? { background: '#FFF5E5', foreground: '#8A5700', label: 'Notice' }
+      : { background: colors.white, foreground: colors.primaryDark, label: 'Update' };
+  return (
+    <View style={[styles.announcement, { backgroundColor: tone.background }]}>
+      <View style={styles.announcementCopy}>
+        <Text style={[styles.announcementSeverity, { color: tone.foreground }]}>{tone.label}</Text>
+        <Text style={styles.announcementTitle}>{announcement.title}</Text>
+        <Text style={styles.announcementMessage}>{announcement.message}</Text>
+      </View>
+      <Pressable onPress={onDismiss} style={styles.dismissAnnouncement} accessibilityRole="button" accessibilityLabel="Dismiss announcement">
+        <X size={20} color={tone.foreground} />
+      </Pressable>
+    </View>
+  );
+}
+
 function QuickAction({ icon: Icon, label, onPress, disabled = false }: {
   icon: typeof ShoppingCart;
   label: string;
@@ -364,6 +427,12 @@ const styles = StyleSheet.create({
   heroMargin: { color: colors.primaryLight, fontSize: 13, fontWeight: '600', paddingBottom: 3 },
   statGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.three, marginTop: Spacing.four, marginBottom: Spacing.four },
   quickActions: { flexDirection: 'row', justifyContent: 'space-between', gap: 4, marginVertical: Spacing.two },
+  announcement: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.two, padding: Spacing.three, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border },
+  announcementCopy: { flex: 1, gap: 4 },
+  announcementSeverity: { fontSize: 11, fontWeight: '800', textTransform: 'uppercase' },
+  announcementTitle: { color: colors.text, fontSize: 15, fontWeight: '700' },
+  announcementMessage: { color: colors.textSecondary, fontSize: 13, lineHeight: 19 },
+  dismissAnnouncement: { width: 48, minHeight: 48, alignItems: 'center', justifyContent: 'center', marginTop: -8, marginRight: -8 },
   quickAction: { flex: 1, minWidth: 0, minHeight: 76, alignItems: 'center', justifyContent: 'flex-start', gap: 5, paddingVertical: 4, paddingHorizontal: 2 },
   quickIcon: { width: 48, height: 48, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border },
   quickLabel: { color: colors.text, fontSize: 12, fontWeight: '600', textAlign: 'center' },

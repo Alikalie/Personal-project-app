@@ -22,7 +22,7 @@ export default function ForgotPassword() {
 
   if (sent) {
     return (
-      <Screen back footer={<Button label="Back to log in" onPress={() => router.replace('/login')} />}>
+      <Screen back brand footer={<Button label="Back to log in" onPress={() => router.replace('/login')} />}>
         <View style={{ alignItems: 'center', marginTop: 48 }}>
           <View style={{ width: 84, height: 84, borderRadius: 42, backgroundColor: colors.primaryLight, alignItems: 'center', justifyContent: 'center' }}>
             <CheckCircle2 size={44} color={colors.primary} />
@@ -37,7 +37,7 @@ export default function ForgotPassword() {
   }
 
   return (
-    <Screen back title="Reset your password" subtitle="Enter your email and we will send you a link to reset it."
+    <Screen back brand title="Reset your password" subtitle="Enter your email and we will send you a link to reset it."
       footer={<Button label="Send reset link" onPress={submit} />}
     >
       <Field label="Email" icon={Mail} value={email} onChangeText={setEmail} placeholder="you@example.com" keyboardType="email-address" autoCapitalize="none" error={error} />

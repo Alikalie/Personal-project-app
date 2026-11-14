@@ -4,8 +4,15 @@ import { router, useFocusEffect } from 'expo-router';
 import {
   Activity,
   Building2,
+  CircleHelp,
   ClipboardList,
+  FileText,
+  Headset,
+  Mail,
+  Megaphone,
+  Settings,
   Shield,
+  Smartphone,
   Users,
 } from 'lucide-react-native';
 
@@ -170,6 +177,13 @@ export default function AdminHome() {
             <NavTile icon={Building2} title="Businesses" subtitle="Business details and activity counts" onPress={() => router.push('/admin/businesses')} />
             <NavTile icon={ClipboardList} title="Audit log" subtitle="Recent admin actions" onPress={() => router.push('/admin/audit')} />
             {superAdmin ? <NavTile icon={Shield} title="Admin team" subtitle="Manage platform admins" onPress={() => router.push('/admin/team')} /> : null}
+            {superAdmin ? <NavTile icon={Mail} title="Marketing email export" subtitle="Export opted-in email addresses" onPress={() => router.push('/admin/email-export')} /> : null}
+            <NavTile icon={FileText} title="Legal documents" subtitle={superAdmin ? 'Draft and publish policies' : 'View published policies'} onPress={() => router.push('/admin/legal')} />
+            {superAdmin ? <NavTile icon={Smartphone} title="App versions" subtitle="Manage release updates" onPress={() => router.push('/admin/releases')} /> : null}
+            <NavTile icon={Megaphone} title="Announcements" subtitle="Publish updates for shops" onPress={() => router.push('/admin/announcements')} />
+            <NavTile icon={CircleHelp} title="FAQ" subtitle="Manage help answers" onPress={() => router.push('/admin/faq')} />
+            <NavTile icon={Settings} title="App settings" subtitle={superAdmin ? 'Update public app settings' : 'View app settings'} onPress={() => router.push('/admin/settings')} />
+            <NavTile icon={Headset} title="Support access" subtitle="Review active support session" onPress={() => router.push('/admin/support-access')} />
           </AdminCard>
         </ScrollView>
       ) : null}

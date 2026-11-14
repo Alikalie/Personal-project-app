@@ -4,11 +4,9 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Button, Screen } from '@/components/ui';
 import { colors } from '@/constants/theme';
-import { usePublicAppSettings } from '@/components/PublicAppSettingsProvider';
 import { LegalLinks } from '@/components/LegalLinks';
 
 export default function Welcome() {
-  const { settings } = usePublicAppSettings();
   return (
     <Screen footer={
       <>
@@ -21,17 +19,21 @@ export default function Welcome() {
     }>
       <View style={styles.hero}>
         <Image
-          source={require('../../assets/images/sml-logo-tight.png')}
+          source={require('../../assets/images/mishop-icon.png')}
           style={styles.logo}
           contentFit="contain"
           accessibilityLabel="MiShop logo"
         />
-        <Text style={styles.brand}>{settings.appName}</Text>
-        <Text style={styles.tagline}>{settings.tagline}</Text>
         <Text style={styles.title}>Sell, track stock, and manage customers.</Text>
         <Text style={styles.subtitle}>
           Keep your shop organised from one simple dashboard.
         </Text>
+        <Image
+          source={require('../../assets/images/mishop-welcome-owner.png')}
+          style={styles.illustration}
+          contentFit="contain"
+          accessibilityLabel="Shop owner managing stock with MiShop"
+        />
       </View>
     </Screen>
   );
@@ -39,9 +41,7 @@ export default function Welcome() {
 
 const styles = StyleSheet.create({
   hero: { marginTop: 20, alignItems: 'center' },
-  logo: { width: '100%', maxWidth: 300, height: 168 },
-  brand: { fontSize: 24, fontWeight: '800', color: colors.primaryDark, marginTop: 4 },
-  tagline: { fontSize: 14, color: colors.textSecondary, marginTop: 4, textAlign: 'center' },
+  logo: { width: 144, height: 144, marginBottom: 8 },
   title: {
     fontSize: 26,
     lineHeight: 34,
@@ -58,6 +58,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     color: colors.textSecondary,
   },
+  illustration: { width: '100%', maxWidth: 320, aspectRatio: 1, marginTop: 12 },
   loginLink: { marginTop: 16, alignItems: 'center' },
   loginText: { fontSize: 15, color: colors.textSecondary },
   loginBold: { color: colors.primary, fontWeight: '700' },

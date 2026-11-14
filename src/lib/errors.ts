@@ -106,6 +106,12 @@ export function friendlyErrorMessage(error: unknown, context?: 'sale' | 'repayme
     return 'No internet connection. Check your connection and try again.';
   }
   if (context === 'receipt') {
+    if (/sharing is not available/.test(normalized)) {
+      return 'Sharing is not available on this device. Try downloading the receipt instead.';
+    }
+    if (/cache is not available|pdf could not be verified/.test(normalized)) {
+      return 'The receipt file could not be saved on this device. Check available storage and try again.';
+    }
     return 'Could not prepare this receipt. Please try again.';
   }
 

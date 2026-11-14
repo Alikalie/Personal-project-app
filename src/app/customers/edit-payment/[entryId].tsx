@@ -8,7 +8,7 @@ import { ScreenHeader } from '@/components/ds';
 import { Button } from '@/components/ui';
 import { colors, radius, Spacing, typography } from '@/constants/theme';
 import { friendlyErrorMessage } from '@/lib/errors';
-import { formatSLE, parseSLEToMinorUnits } from '@/lib/money';
+import { currencyFractionDigits, formatSLE, parseMoneyToMinorUnits } from '@/lib/money';
 import { canEditBusiness } from '@/lib/permissions';
 import { newId } from '@/lib/uuid';
 import { refreshDashboardViews } from '@/services/dashboardService';
@@ -33,10 +33,13 @@ const methods: { value: PaymentMethod; label: string }[] = [
 ];
 const reasonOptions = ['Wrong amount', 'Wrong method', 'Entered twice', 'Other'];
 
-function amountInput(minor: number): string {
-  const major = Math.floor(minor / 100);
-  const cents = String(minor % 100).padStart(2, '0');
-  return cents === '00' ? String(major) : `${major}.${cents}`;
+function amountInput(minor: number, currencyCode: string): string {
+  const digits = currencyFractionDigits(currencyCode);
+  const absolute = BigInt(Math.abs(minor));
+  const factor = 10n ** BigInt(digits);
+  const major = String(absolute / factor);
+  const fraction = digits ? String(absolute % factor).padStart(digits, '0') : '';
+  return `${major}${fraction ? `.${fraction}` : ''}`;
 }
 
 function methodName(method: string | null): string {
@@ -83,7 +86,7 @@ export default function EditPayment() {
       if (!Number.isSafeInteger(baseBalance)) throw new Error('The customer balance exceeds the supported range.');
       setCustomer(paymentCustomer);
       setEntry(payment);
-      setAmount(amountInput(Math.abs(payment.amount_minor)));
+      setAmount(amountInput(Math.abs(payment.amount_minor), ctx?.business?.currencyCode ?? 'SLE'));
       setMethod(methods.some((item) => item.value === payment.method)
         ? payment.method as PaymentMethod
         : 'other');
@@ -94,7 +97,7 @@ export default function EditPayment() {
     } finally {
       setLoading(false);
     }
-  }, [allowed, businessId, customerId, entryId]);
+  }, [allowed, businessId, customerId, ctx?.business?.currencyCode, entryId]);
 
   useFocusEffect(useCallback(() => {
     void load();
@@ -107,7 +110,7 @@ export default function EditPayment() {
 
   const parsedAmount = useMemo(() => {
     try {
-      return { value: amount.trim() ? parseSLEToMinorUnits(amount) : null, error: '' };
+      return { value: amount.trim() ? parseMoneyToMinorUnits(amount) : null, error: '' };
     } catch {
       return { value: null, error: 'Enter a valid payment amount.' };
     }

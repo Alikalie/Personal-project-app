@@ -10,7 +10,7 @@ import { Button } from '@/components/ui';
 import { EmptyState, ScreenHeader, Skeleton } from '@/components/ds';
 import { colors, radius, Spacing, typography } from '@/constants/theme';
 import { friendlyErrorMessage } from '@/lib/errors';
-import { formatSLE, parseSLEToMinorUnits } from '@/lib/money';
+import { currencyFractionDigits, formatSLE, parseMoneyToMinorUnits } from '@/lib/money';
 import { buildRepaymentReceiptData } from '@/lib/receipt/buildReceiptData';
 import type { ReceiptData } from '@/lib/receipt/types';
 import { newId } from '@/lib/uuid';
@@ -34,8 +34,13 @@ const methods: { id: PaymentMethod; label: string }[] = [
 
 // Enum examples: Cash -> "cash"; Orange Money -> "orange_money"; Afrimoney -> "afrimoney"; Other -> "other".
 
-function amountInput(minor: number): string {
-  return `${Math.floor(minor / 100)}.${String(minor % 100).padStart(2, '0')}`;
+function amountInput(minor: number, currencyCode: string): string {
+  const digits = currencyFractionDigits(currencyCode);
+  const absolute = BigInt(Math.abs(minor));
+  const factor = 10n ** BigInt(digits);
+  const major = String(absolute / factor);
+  const fraction = digits ? String(absolute % factor).padStart(digits, '0') : '';
+  return `${minor < 0 ? '-' : ''}${major}${fraction ? `.${fraction}` : ''}`;
 }
 
 function amountError(value: string, balanceMinor: number): { amountMinor: number | null; reason: string } {
@@ -43,7 +48,7 @@ function amountError(value: string, balanceMinor: number): { amountMinor: number
   if (!input) return { amountMinor: null, reason: 'Enter an amount.' };
   if (/^-/.test(input)) return { amountMinor: null, reason: 'Enter an amount greater than zero.' };
   try {
-    const amountMinor = parseSLEToMinorUnits(input);
+    const amountMinor = parseMoneyToMinorUnits(input);
     if (amountMinor <= 0) return { amountMinor: null, reason: 'Enter an amount greater than zero.' };
     if (amountMinor > balanceMinor) {
       return { amountMinor, reason: 'Amount is more than the balance owed.' };
@@ -271,7 +276,7 @@ export default function RepayCustomer() {
           {parsed.reason ? <Text style={styles.inlineReason}>{parsed.reason}</Text> : null}
           <View style={styles.quickChoices}>
             <Pressable
-              onPress={() => setAmount(amountInput(balanceMinor))}
+              onPress={() => setAmount(amountInput(balanceMinor, business?.currencyCode ?? 'SLE'))}
               disabled={balanceMinor <= 0 || submitting}
               style={styles.quickChoice}
               accessibilityRole="button"
@@ -279,7 +284,7 @@ export default function RepayCustomer() {
               <Text style={styles.quickChoiceText}>Pay full balance</Text>
             </Pressable>
             <Pressable
-              onPress={() => setAmount(amountInput(Math.floor(balanceMinor / 2)))}
+              onPress={() => setAmount(amountInput(Math.floor(balanceMinor / 2), business?.currencyCode ?? 'SLE'))}
               disabled={balanceMinor <= 0 || submitting}
               style={styles.quickChoice}
               accessibilityRole="button"

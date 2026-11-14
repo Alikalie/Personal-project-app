@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { Alert, Pressable, Text, TextInput, View } from 'react-native';
-import { Image } from 'expo-image';
-import { ChevronDown, ChevronUp, ImagePlus, Plus, Tag } from 'lucide-react-native';
+import { ChevronDown, ChevronUp, Plus, Tag } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 
 import { Button, Field, Screen } from '@/components/ui';
+import { ProductImage } from '@/components/ProductImage';
+import { useAuth } from '@/components/AuthProvider';
 import { colors, radius } from '@/constants/theme';
-import { parseSLEToMinorUnits } from '@/lib/money';
+import { currencyFractionDigits, parseMoneyToMinorUnits } from '@/lib/money';
 import type { Category } from '@/services/categoryService';
 import type { Product, ProductInput } from '@/services/productService';
 
@@ -27,11 +28,14 @@ type Props = {
   retryLoading?: boolean;
 };
 
-function minorText(value: number | undefined): string {
+function minorText(value: number | undefined, currencyCode: string): string {
   if (value === undefined) return '';
-  const major = Math.floor(value / 100);
-  const fraction = String(value % 100).padStart(2, '0');
-  return fraction === '00' ? String(major) : `${major}.${fraction}`;
+  const digits = currencyFractionDigits(currencyCode);
+  const absolute = BigInt(Math.abs(value));
+  const factor = 10n ** BigInt(digits);
+  const major = String(absolute / factor);
+  const fraction = digits ? String(absolute % factor).padStart(digits, '0') : '';
+  return `${value < 0 ? '-' : ''}${major}${fraction ? `.${fraction}` : ''}`;
 }
 
 export default function ProductForm({
@@ -48,12 +52,14 @@ export default function ProductForm({
   onRetryImage,
   retryLoading = false,
 }: Props) {
+  const { ctx } = useAuth();
+  const currencyCode = ctx?.business?.currencyCode ?? 'SLE';
   const [name, setName] = useState(initialProduct?.name ?? '');
   const [sku, setSku] = useState(initialProduct?.sku ?? '');
   const [barcode, setBarcode] = useState(initialProduct?.barcode ?? '');
   const [categoryId, setCategoryId] = useState(initialProduct?.category_id ?? '');
-  const [cost, setCost] = useState(minorText(initialProduct?.cost_price_minor));
-  const [selling, setSelling] = useState(minorText(initialProduct?.selling_price_minor));
+  const [cost, setCost] = useState(minorText(initialProduct?.cost_price_minor, currencyCode));
+  const [selling, setSelling] = useState(minorText(initialProduct?.selling_price_minor, currencyCode));
   const [quantity, setQuantity] = useState('');
   const [threshold, setThreshold] = useState(String(initialProduct?.low_stock_threshold ?? 5));
   const [imageUri, setImageUri] = useState<string | null>(null);
@@ -111,8 +117,8 @@ export default function ProductForm({
     let costMinor: number;
     let sellingMinor: number;
     try {
-      costMinor = parseSLEToMinorUnits(cost);
-      sellingMinor = parseSLEToMinorUnits(selling);
+      costMinor = parseMoneyToMinorUnits(cost, currencyCode);
+      sellingMinor = parseMoneyToMinorUnits(selling, currencyCode);
     } catch (parseError) {
       setValidationError(parseError instanceof Error ? parseError.message : 'Enter valid prices.');
       return;
@@ -139,8 +145,8 @@ export default function ProductForm({
     }, imageUri);
   };
 
-  const costMinor = parseSLEToMinorUnitsOrNull(cost);
-  const sellingMinor = parseSLEToMinorUnitsOrNull(selling);
+  const costMinor = parseMoneyToMinorUnitsOrNull(cost, currencyCode);
+  const sellingMinor = parseMoneyToMinorUnitsOrNull(selling, currencyCode);
   const belowCost = costMinor !== null && sellingMinor !== null && sellingMinor < costMinor;
   const marginBasisPoints = sellingMinor && costMinor !== null
     ? Math.round(((sellingMinor - costMinor) * 10000) / sellingMinor)
@@ -162,9 +168,7 @@ export default function ProductForm({
     >
       <View style={{ flexDirection: 'row', gap: 12, marginBottom: 18 }}>
         <View style={{ width: 96, height: 96, borderRadius: radius.md, backgroundColor: colors.primaryLight, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-          {(imageUri || initialImageUrl) ? (
-            <Image source={{ uri: imageUri ?? initialImageUrl ?? undefined }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
-          ) : <ImagePlus size={32} color={colors.primary} />}
+          <ProductImage imageUrl={imageUri ?? initialImageUrl ?? null} style={{ width: '100%', height: '100%' }} />
         </View>
         <View style={{ flex: 1, justifyContent: 'center', gap: 8 }}>
           <Button label="Take photo" onPress={() => void chooseImage(true)} variant="outline" disabled={loading} />
@@ -189,8 +193,8 @@ export default function ProductForm({
       </View>
       {!!categoryError && <Text style={styles.error}>{categoryError}</Text>}
 
-      <Field label="Purchase price (Leones) *" value={cost} onChangeText={setCost} placeholder="e.g. 12500.50" keyboardType="decimal-pad" />
-      <Field label="Selling price (Leones) *" value={selling} onChangeText={setSelling} placeholder="e.g. 15000" keyboardType="decimal-pad" />
+      <Field label={`Purchase price (${currencyCode}) *`} value={cost} onChangeText={setCost} placeholder={currencyCode === 'XOF' || currencyCode === 'XAF' ? 'e.g. 12500' : 'e.g. 12500.50'} keyboardType="decimal-pad" />
+      <Field label={`Selling price (${currencyCode}) *`} value={selling} onChangeText={setSelling} placeholder={currencyCode === 'XOF' || currencyCode === 'XAF' ? 'e.g. 15000' : 'e.g. 15000.00'} keyboardType="decimal-pad" />
       {belowCost && <Text style={styles.warning}>Selling price is below purchase price.</Text>}
       {marginBasisPoints !== null && <Text style={styles.hint}>Estimated margin: {Math.floor(marginBasisPoints / 100)}.{String(Math.abs(marginBasisPoints % 100)).padStart(2, '0')}%</Text>}
 
@@ -218,9 +222,9 @@ export default function ProductForm({
   );
 }
 
-function parseSLEToMinorUnitsOrNull(value: string): number | null {
+function parseMoneyToMinorUnitsOrNull(value: string, currencyCode: string): number | null {
   try {
-    return parseSLEToMinorUnits(value);
+    return parseMoneyToMinorUnits(value, currencyCode);
   } catch {
     return null;
   }

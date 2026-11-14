@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, FlatList, Modal, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { Image } from 'expo-image';
 import { router, useFocusEffect } from 'expo-router';
 import { Minus, Plus, Search, ShoppingCart, Trash2, X } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -8,12 +7,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useCart } from '@/components/CartProvider';
 import { useAuth } from '@/components/AuthProvider';
 import { Card, Chip as DesignChip, EmptyState, IconButton, ScreenHeader, Skeleton } from '@/components/ds';
+import { ProductImage } from '@/components/ProductImage';
 import { ReceiptActions } from '@/components/receipts/ReceiptActions';
 import { Button } from '@/components/ui';
 import { colors, radius, shadow } from '@/constants/theme';
 import { calculateCashChange } from '@/lib/cart';
 import { friendlyErrorMessage } from '@/lib/errors';
-import { formatSLE, parseSLEToMinorUnits } from '@/lib/money';
+import { formatSLE, parseMoneyToMinorUnits } from '@/lib/money';
 import { buildSaleReceiptData } from '@/lib/receipt/buildReceiptData';
 import type { ReceiptData } from '@/lib/receipt/types';
 import { listCategories, type Category } from '@/services/categoryService';
@@ -130,7 +130,7 @@ export default function Sales() {
     try {
       for (const method of paymentMethods) {
         const input = paymentAmounts[method.id].trim();
-        if (input) amounts[method.id] = parseSLEToMinorUnits(input);
+        if (input) amounts[method.id] = parseMoneyToMinorUnits(input);
       }
       return { amounts, error: '' };
     } catch {
@@ -345,9 +345,7 @@ export default function Sales() {
                 style={[styles.productCard, outOfStock && styles.outOfStock]}
               >
                 <Card style={styles.productCardContent}>
-                  {item.image_url
-                    ? <Image source={{ uri: item.image_url }} style={styles.productImage} contentFit="cover" />
-                    : <View style={styles.placeholder}><ShoppingCart size={28} color={colors.primary} /></View>}
+                  <ProductImage imageUrl={item.image_url} style={styles.productImage} />
                   <Text style={styles.productName} numberOfLines={2}>{item.name}</Text>
                   <Text style={styles.productPrice}>{formatSLE(item.selling_price_minor)}</Text>
                   <Text style={styles.stockCount}>{outOfStock ? 'Out of stock' : `${item.quantity} in stock`}</Text>
@@ -436,7 +434,7 @@ export default function Sales() {
                     </View>
                     {paymentMethods.map(({ id, label }) => (
                       <View key={id} style={styles.paymentField}>
-                        <Text style={styles.paymentLabel}>{label} ({id === 'cash' ? 'amount received' : 'amount'})</Text>
+                        <Text style={styles.paymentLabel}>{label} ({id === 'cash' ? 'amount received' : 'amount'}, {ctx?.business?.currencyCode ?? 'SLE'})</Text>
                         <TextInput
                           value={paymentAmounts[id]}
                           onChangeText={(value) => setPaymentAmounts((current) => ({ ...current, [id]: value }))}

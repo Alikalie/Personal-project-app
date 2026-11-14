@@ -23,6 +23,7 @@ export type RequiredLegalAcceptance = {
 
 const publishedCacheKey = (type: LegalDocumentType) => `@mishop/legal/published/${type}`;
 const acceptedCacheKey = (userId: string) => `@mishop/legal/accepted/${userId}`;
+const pendingSignupKey = '@mishop/legal/pending-signup-user';
 
 function isLegalDocumentType(value: unknown): value is LegalDocumentType {
   return value === 'privacy' || value === 'terms';
@@ -99,8 +100,24 @@ export async function acceptPublishedLegalDocuments(appVersion: string, userId: 
   const { error } = await supabase.rpc('accept_legal_documents', { p_app_version: appVersion });
   if (error) throw error;
   await AsyncStorage.setItem(acceptedCacheKey(userId), 'true');
+  if ((await AsyncStorage.getItem(pendingSignupKey)) === userId) {
+    await AsyncStorage.removeItem(pendingSignupKey);
+  }
 }
 
 export async function hasPreviouslyAcceptedLegal(userId: string): Promise<boolean> {
   return (await AsyncStorage.getItem(acceptedCacheKey(userId))) === 'true';
+}
+
+export async function rememberSignupConsent(userId: string): Promise<void> {
+  await AsyncStorage.setItem(pendingSignupKey, userId);
+}
+
+export async function acceptSignupConsentIfPending(userId: string, appVersion: string): Promise<void> {
+  if ((await AsyncStorage.getItem(pendingSignupKey)) !== userId) return;
+  await acceptPublishedLegalDocuments(appVersion, userId);
+}
+
+export async function rememberCurrentLegalAccepted(userId: string): Promise<void> {
+  await AsyncStorage.setItem(acceptedCacheKey(userId), 'true');
 }

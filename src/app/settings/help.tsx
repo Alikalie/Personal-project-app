@@ -4,33 +4,57 @@ import * as Linking from 'expo-linking';
 import { useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { ChevronDown, ChevronUp, Mail, MessageCircle, Phone } from 'lucide-react-native';
+import { useFocusEffect } from 'expo-router';
+import { useCallback } from 'react';
 
 import { Button } from '@/components/ui';
 import { useAuth } from '@/components/AuthProvider';
 import { Card, ListRow } from '@/components/ds';
 import { SettingsPage } from '@/components/settings/SettingsPage';
 import { usePublicAppSettings } from '@/components/PublicAppSettingsProvider';
+import { listPublishedFAQ, type FAQItem } from '@/services/contentService';
 import { colors, minTouchTarget, Spacing, typography } from '@/constants/theme';
-
-const faq = [
-  { question: 'How do I add a product?', answer: 'Open the Stock tab and tap Add product. Enter its details and save.' },
-  { question: 'How do I record a credit sale?', answer: 'Add items to a sale, choose a customer in the cart, then select Credit at payment.' },
-  { question: 'How do I record a repayment?', answer: 'Repayment recording will be available in the Customers module in a future release.' },
-  { question: 'How do I check my profit?', answer: 'Open the Home dashboard or sale details. Profit figures are available to owners and managers.' },
-  { question: 'How do I change my password?', answer: 'Open More, choose Change password, and enter your new password twice.' },
-];
+import { safeContactUrl } from '@/lib/urls';
 
 export default function HelpSettings() {
   const { ctx } = useAuth();
   const { settings } = usePublicAppSettings();
   const [expanded, setExpanded] = useState<number | null>(null);
+  const [faq, setFaq] = useState<FAQItem[]>([]);
+  const [faqOffline, setFaqOffline] = useState(false);
+  const [faqError, setFaqError] = useState('');
+  const [faqLoading, setFaqLoading] = useState(true);
   const appVersion = Constants.expoConfig?.version ?? 'Unknown';
 
-  const openContact = async (url: string, title: string) => {
+  const loadFAQ = useCallback(async () => {
+    setFaqLoading(true);
+    setFaqError('');
     try {
-      await Linking.openURL(url);
+      const result = await listPublishedFAQ();
+      setFaq(result.items);
+      setFaqOffline(result.offline);
     } catch (error) {
-      console.warn(`Unable to open ${title} contact link`, error);
+      console.warn('FAQ could not be loaded:', error);
+      setFaqError('Could not load frequently asked questions.');
+    } finally {
+      setFaqLoading(false);
+    }
+  }, []);
+
+  useFocusEffect(useCallback(() => {
+    void loadFAQ();
+  }, [loadFAQ]));
+
+  const openContact = async (url: string, title: string) => {
+    const safeUrl = safeContactUrl(url);
+    if (!safeUrl) {
+      Alert.alert('Invalid contact link', 'Check the support contact details and try again.');
+      return;
+    }
+    try {
+      await Linking.openURL(safeUrl);
+    } catch {
+      console.warn(`Unable to open ${title} contact link`);
       Alert.alert('Unable to open contact', `Please check that a ${title.toLowerCase()} app is available on this device.`);
     }
   };
@@ -59,14 +83,24 @@ export default function HelpSettings() {
       </Card>
 
       <Text style={styles.sectionTitle}>Frequently asked questions</Text>
+      {faqOffline ? <Text style={styles.answer}>Showing saved answers while offline.</Text> : null}
+      {faqError ? (
+        <Pressable onPress={() => void loadFAQ()} style={styles.retry} accessibilityRole="button">
+          <Text style={styles.error}>{faqError} Try again</Text>
+        </Pressable>
+      ) : faqLoading && faq.length === 0 ? (
+        <Text style={styles.answer}>Loading questions…</Text>
+      ) : faq.length === 0 ? (
+        <Text style={styles.answer}>No questions have been published yet.</Text>
+      ) : null}
       <Card style={styles.faqCard}>
-        {faq.map((item, index) => {
-          const isExpanded = expanded === index;
+        {faq.map((item) => {
+          const isExpanded = expanded === faq.findIndex((entry) => entry.id === item.id);
           const Chevron = isExpanded ? ChevronUp : ChevronDown;
           return (
-            <View key={item.question} style={styles.faqItem}>
+            <View key={item.id} style={styles.faqItem}>
               <Pressable
-                onPress={() => setExpanded(isExpanded ? null : index)}
+                onPress={() => setExpanded(isExpanded ? null : faq.findIndex((entry) => entry.id === item.id))}
                 accessibilityRole="button"
                 accessibilityState={{ expanded: isExpanded }}
                 accessibilityLabel={`${item.question}${isExpanded ? ', expanded' : ''}`}
@@ -99,4 +133,6 @@ const styles = StyleSheet.create({
   answer: { color: colors.textSecondary, ...typography.body, lineHeight: 22, paddingBottom: Spacing.four },
   versionCard: { gap: Spacing.three },
   version: { color: colors.textSecondary, ...typography.caption },
+  retry: { minHeight: 48, justifyContent: 'center' },
+  error: { color: colors.danger, ...typography.caption },
 });

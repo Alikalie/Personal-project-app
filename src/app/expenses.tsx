@@ -19,7 +19,7 @@ import { ScreenHeader, Skeleton } from '@/components/ds';
 import { Button, Field } from '@/components/ui';
 import { colors, radius, Spacing, typography } from '@/constants/theme';
 import { friendlyErrorMessage } from '@/lib/errors';
-import { formatSLE, parseSLEToMinorUnits } from '@/lib/money';
+import { formatSLE, parseMoneyToMinorUnits } from '@/lib/money';
 import { refreshDashboardViews } from '@/services/dashboardService';
 import {
   createExpense,
@@ -115,7 +115,7 @@ export default function ExpensesScreen() {
   const parsedAmount = useMemo(() => {
     if (!amount.trim()) return null;
     try {
-      return parseSLEToMinorUnits(amount);
+      return parseMoneyToMinorUnits(amount);
     } catch {
       return null;
     }
@@ -209,7 +209,7 @@ export default function ExpensesScreen() {
 
           <View style={styles.form}>
             <Text style={styles.sectionTitle}>Add expense</Text>
-            <Text style={styles.label}>Amount</Text>
+            <Text style={styles.label}>Amount ({ctx?.business?.currencyCode ?? 'SLE'})</Text>
             <TextInput
               value={amount}
               onChangeText={(value) => {

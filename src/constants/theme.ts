@@ -101,11 +101,11 @@ export const shadow = {
 };
 
 export const typography = {
-  title: { fontSize: 26, fontWeight: '800' as const },
-  heading: { fontSize: 18, fontWeight: '800' as const },
-  body: { fontSize: 15, fontWeight: '500' as const },
-  label: { fontSize: 13, fontWeight: '600' as const },
-  caption: { fontSize: 12, fontWeight: '500' as const },
+  title: { fontFamily: 'Inter_800ExtraBold', fontSize: 26, fontWeight: '800' as const },
+  heading: { fontFamily: 'Inter_800ExtraBold', fontSize: 18, fontWeight: '800' as const },
+  body: { fontFamily: 'Inter_500Medium', fontSize: 15, fontWeight: '500' as const },
+  label: { fontFamily: 'Inter_600SemiBold', fontSize: 13, fontWeight: '600' as const },
+  caption: { fontFamily: 'Inter_500Medium', fontSize: 12, fontWeight: '500' as const },
 } as const;
 
 export const minTouchTarget = 48;
