@@ -7,6 +7,7 @@ import {
   StyleSheet,
   Text,
   View,
+  type ImageSourcePropType,
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
@@ -84,6 +85,7 @@ export function SectionHeader({
 export function ListRow({
   icon: Icon,
   image,
+  imagePlaceholder,
   leadingLabel,
   title,
   subtitle,
@@ -95,6 +97,7 @@ export function ListRow({
 }: {
   icon?: LucideIcon;
   image?: string | null;
+  imagePlaceholder?: ImageSourcePropType;
   leadingLabel?: string;
   title: string;
   subtitle?: string;
@@ -106,8 +109,11 @@ export function ListRow({
 }) {
   const content = (
     <>
-      {image ? (
-        <Image source={{ uri: image }} style={styles.rowImage} />
+      {image || imagePlaceholder ? (
+        <Image
+          source={image ? { uri: image } : imagePlaceholder!}
+          style={[styles.rowImage, !image && styles.rowImagePlaceholder]}
+        />
       ) : leadingLabel ? (
         <View style={styles.avatar}><Text style={styles.avatarText}>{leadingLabel}</Text></View>
       ) : Icon ? (
@@ -306,6 +312,7 @@ const styles = StyleSheet.create({
   actionText: { color: colors.primaryDark, ...typography.label },
   listRow: { minHeight: 68, flexDirection: 'row', alignItems: 'center', gap: Spacing.three, paddingHorizontal: Spacing.three, paddingVertical: Spacing.two, backgroundColor: colors.white, borderRadius: radius.lg },
   rowImage: { width: 48, height: 48, borderRadius: 12, backgroundColor: colors.primaryLight },
+  rowImagePlaceholder: { resizeMode: 'contain', padding: 5 },
   rowIcon: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primaryLight },
   avatar: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primaryLight },
   avatarText: { color: colors.primaryDark, fontSize: 13, fontWeight: '800' },

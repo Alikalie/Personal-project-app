@@ -6,9 +6,16 @@ import { Platform } from 'react-native';
 
 import { friendlyErrorMessage } from '@/lib/errors';
 import { receiptHtml } from '@/lib/receipt/receiptHtml';
+import { receiptPageSize } from '@/lib/receipt/receiptHtml';
 import type { ReceiptData, ReceiptLayout } from '@/lib/receipt/types';
+import { formatMoney } from '@/lib/money';
 
 const savedDirectoryKey = '@salonebiz/receipt-download-directory';
+
+function safeReceiptName(receiptNo: string): string {
+  const safe = receiptNo.replace(/[^A-Za-z0-9_-]/g, '-').slice(0, 60) || 'receipt';
+  return `MiShop-Receipt-${safe}.pdf`;
+}
 
 function rawErrorText(error: unknown): string {
   try {
@@ -19,30 +26,39 @@ function rawErrorText(error: unknown): string {
 }
 
 export async function createReceiptPdf(data: ReceiptData, layout: ReceiptLayout = 'compact'): Promise<string> {
-  let printedUri: string | null = null;
+  let targetUri: string | null = null;
   try {
     const cacheDirectory = FileSystem.cacheDirectory;
     if (!cacheDirectory) throw new Error('The app cache is not available.');
-    const compactHeight = Math.max(850, 700 + (data.kind === 'sale' ? data.items.length * 52 + data.payments.length * 32 : 0));
+    const pageSize = receiptPageSize(data, layout);
     const printed = await Print.printToFileAsync({
-      html: receiptHtml(data, layout),
-      width: layout === 'compact' ? 227 : 595,
-      height: layout === 'compact' ? compactHeight : 842,
+      html: receiptHtml(data, {
+        size: layout,
+        fmt: (minor) => formatMoney(minor, data.business.currencyCode || 'SLE'),
+      }),
+      width: pageSize.width,
+      height: pageSize.height,
+      base64: true,
     });
-    printedUri = printed.uri;
-    const info = await FileSystem.getInfoAsync(printed.uri);
+    if (!printed.base64) throw new Error('The generated receipt PDF could not be read.');
+
+    targetUri = `${cacheDirectory}${safeReceiptName(data.receiptNo)}`;
+    await FileSystem.deleteAsync(targetUri, { idempotent: true });
+    await FileSystem.writeAsStringAsync(targetUri, printed.base64, {
+      encoding: FileSystem.EncodingType.Base64,
+    });
+    const info = await FileSystem.getInfoAsync(targetUri);
     if (!info.exists || !('size' in info) || typeof info.size !== 'number' || info.size <= 0) {
       throw new Error('The receipt PDF could not be verified.');
     }
-    printedUri = null;
-    return printed.uri;
+    return targetUri;
   } catch (error) {
     console.warn('Receipt PDF generation failed:', rawErrorText(error));
-    if (printedUri) {
+    if (targetUri) {
       try {
-        await FileSystem.deleteAsync(printedUri, { idempotent: true });
+        await FileSystem.deleteAsync(targetUri, { idempotent: true });
       } catch (cleanupError) {
-        console.warn('Temporary receipt PDF could not be removed:', rawErrorText(cleanupError));
+        console.warn('Incomplete receipt PDF could not be removed:', rawErrorText(cleanupError));
       }
     }
     throw error;
@@ -164,7 +180,15 @@ export async function downloadReceipt(uri: string, fileName: string): Promise<st
 
 export async function printReceipt(data: ReceiptData, layout: ReceiptLayout): Promise<void> {
   try {
-    await Print.printAsync({ html: receiptHtml(data, layout) });
+    const pageSize = receiptPageSize(data, layout);
+    await Print.printAsync({
+      html: receiptHtml(data, {
+        size: layout,
+        fmt: (minor) => formatMoney(minor, data.business.currencyCode || 'SLE'),
+      }),
+      width: pageSize.width,
+      height: pageSize.height,
+    });
   } catch (error) {
     console.warn('Printing receipt failed:', rawErrorText(error));
     throw error;

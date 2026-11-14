@@ -50,6 +50,7 @@ export type SaleReceiptData = SaleRecord & {
     name: string;
     address: string | null;
     phone: string | null;
+    currency_code: string;
     receipt_header: string | null;
     receipt_footer: string | null;
     show_logo_on_receipt: boolean;
@@ -349,7 +350,7 @@ export async function listReceiptSales(
 export async function getReceiptData(saleId: string): Promise<SaleReceiptData> {
   const record = await getSale(saleId);
   const { data, error } = await supabase.from('businesses')
-    .select('name, address, phone, receipt_header, receipt_footer, show_logo_on_receipt, logo_path')
+    .select('name, address, phone, currency_code, receipt_header, receipt_footer, show_logo_on_receipt, logo_path')
     .eq('id', record.sale.business_id)
     .single();
   if (error) throw new Error(friendlyErrorMessage(error));
@@ -391,6 +392,7 @@ export async function getReceiptData(saleId: string): Promise<SaleReceiptData> {
       name: textValue(business.name),
       address: typeof business.address === 'string' ? business.address : null,
       phone: typeof business.phone === 'string' ? business.phone : null,
+      currency_code: typeof business.currency_code === 'string' ? business.currency_code : 'SLE',
       receipt_header: typeof business.receipt_header === 'string' ? business.receipt_header : null,
       receipt_footer: typeof business.receipt_footer === 'string' ? business.receipt_footer : null,
       show_logo_on_receipt: business.show_logo_on_receipt === true,

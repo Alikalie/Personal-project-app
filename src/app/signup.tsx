@@ -5,6 +5,7 @@ import { Check, CircleCheck, Lock, Mail, Phone, User } from 'lucide-react-native
 
 import { Button, Field, Screen } from '@/components/ui';
 import { useAuth } from '@/components/AuthProvider';
+import { LegalLinks } from '@/components/LegalLinks';
 import { colors } from '@/constants/theme';
 import { friendlyErrorMessage } from '@/lib/errors';
 import { onboarding } from '@/services/onboardingStore';
@@ -159,25 +160,10 @@ export default function SignUp() {
           </View>
         </Pressable>
         <Text style={{ flex: 1, color: colors.text, fontSize: 13, lineHeight: 20 }}>
-          I agree to the{' '}
-          <Text
-            accessibilityRole="link"
-            onPress={() => router.push({ pathname: '/legal/[type]', params: { type: 'terms' } })}
-            style={{ color: colors.primaryDark, fontWeight: '700', textDecorationLine: 'underline' }}
-          >
-            Terms and Conditions
-          </Text>
-          {' '}and{' '}
-          <Text
-            accessibilityRole="link"
-            onPress={() => router.push({ pathname: '/legal/[type]', params: { type: 'privacy' } })}
-            style={{ color: colors.primaryDark, fontWeight: '700', textDecorationLine: 'underline' }}
-          >
-            Privacy Policy
-          </Text>
-          .
+          I agree to the Terms and Conditions and Privacy Policy.
         </Text>
       </View>
+      <LegalLinks />
       <View style={{ minHeight: 52, flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 4 }}>
         <Pressable
           onPress={() => setMarketingConsent((value) => !value)}

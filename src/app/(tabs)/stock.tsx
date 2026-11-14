@@ -195,7 +195,7 @@ function ProductRow({ item, onPress }: { item: Product; onPress: () => void }) {
   return (
     <ListRow
       image={item.image_url}
-      icon={Boxes}
+      imagePlaceholder={require('@/assets/images/mishop-icon.png')}
       title={item.name}
       subtitle={`${item.category_name ?? 'Uncategorised'} · ${zero ? 'Out of stock' : low ? 'Low stock' : 'In stock'}`}
       badge={{

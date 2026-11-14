@@ -7,9 +7,9 @@ const receiptKey = (key: string) => `@salonebiz/receipt/${key}`;
 function isReceiptData(value: unknown): value is ReceiptData {
   if (typeof value !== 'object' || value === null) return false;
   const record = value as Record<string, unknown>;
-  return (record.kind === 'sale' || record.kind === 'repayment')
+  return (record.type === 'sale' || record.type === 'payment')
     && typeof record.receiptNo === 'string'
-    && typeof record.issuedAt === 'string'
+    && typeof record.dateText === 'string'
     && typeof record.business === 'object'
     && record.business !== null;
 }
