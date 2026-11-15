@@ -1,3 +1,4 @@
+import { safeLogger } from '@/lib/safeLogger';
 import { friendlyErrorMessage } from '@/lib/errors';
 import { supabase } from '@/lib/supabase';
 
@@ -192,7 +193,7 @@ async function rpc<T>(
     const errorCode = typeof details.code === 'string' ? details.code : 'unknown';
     const databaseMessage = safeAdminErrorMessage(error);
     if (__DEV__) {
-      console.warn(`${name} RPC failed (${errorCode}): ${databaseMessage ?? 'Unknown database error.'}`);
+      safeLogger.warn(`${name} RPC failed (${errorCode}): ${databaseMessage ?? 'Unknown database error.'}`);
     }
     if (
       missingFunctionFallback !== undefined

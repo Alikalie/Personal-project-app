@@ -10,11 +10,12 @@ import {
   KeyRound,
   LogOut,
   Mail,
+  RefreshCw,
   Shield,
   UserRound,
 } from 'lucide-react-native';
 import { useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAuth } from '@/components/AuthProvider';
@@ -26,7 +27,9 @@ import { clearProductImageCache } from '@/services/productService';
 import { clearSettingsCaches, signOut } from '@/services/settingsService';
 import { useCart } from '@/components/CartProvider';
 import { clearReceiptDataCache } from '@/lib/receipt/receiptStore';
+import { safeHttpsUrl } from '@/lib/urls';
 import { clearSavedSupportAccess } from '@/services/supportAccessService';
+import { getAppReleaseStatus } from '@/services/appReleaseService';
 
 function initials(name: string) {
   return name.trim().split(/\s+/).slice(0, 2).map((part) => part[0]?.toLocaleUpperCase() ?? '').join('') || '?';
@@ -36,8 +39,43 @@ export default function More() {
   const { ctx } = useAuth();
   const { clearCart } = useCart();
   const [loggingOut, setLoggingOut] = useState(false);
+  const [checkingUpdates, setCheckingUpdates] = useState(false);
   const role = ctx?.business?.role ?? null;
   const admin = ctx?.platformAdminLevel ?? null;
+  const appVersion = Constants.expoConfig?.version ?? '—';
+
+  const checkForUpdates = async () => {
+    if (checkingUpdates) return;
+    setCheckingUpdates(true);
+    try {
+      const release = await getAppReleaseStatus(Platform.OS === 'ios' ? 'ios' : 'android', appVersion);
+      if (!release) {
+        Alert.alert('Updates unavailable', 'Could not check for updates. Please try again later.');
+        return;
+      }
+      if (!release.updateAvailable && !release.updateRequired) {
+        Alert.alert('You are up to date', `MiShop ${appVersion} is the latest version.`);
+        return;
+      }
+      if (!release.updateUrl) {
+        Alert.alert(
+          'Update available',
+          [release.releaseNotes, 'Contact support for the download link.'].filter(Boolean).join('\n\n'),
+        );
+        return;
+      }
+      const updateUrl = safeHttpsUrl(release.updateUrl);
+      if (!updateUrl) {
+        Alert.alert('Invalid update link', 'Contact support for a valid download link.');
+        return;
+      }
+      await Linking.openURL(updateUrl);
+    } catch {
+      Alert.alert('Could not open update link', 'Check your connection and try again.');
+    } finally {
+      setCheckingUpdates(false);
+    }
+  };
 
   const confirmLogout = () => Alert.alert('Log out?', 'You will need to sign in again to continue.', [
     { text: 'Cancel', style: 'cancel' },
@@ -115,6 +153,15 @@ export default function More() {
           <View style={styles.divider} />
           <ListRow title="Terms and Conditions" icon={FileText} chevron onPress={() => router.push({ pathname: '/legal/[type]', params: { type: 'terms' } })} />
         </SettingsGroup>
+        <SettingsGroup title="About">
+          <ListRow
+            title={checkingUpdates ? 'Checking for updates…' : 'Check for updates'}
+            subtitle={`Version ${appVersion}`}
+            icon={RefreshCw}
+            chevron
+            onPress={() => void checkForUpdates()}
+          />
+        </SettingsGroup>
         {isPlatformAdmin(admin) ? (
           <SettingsGroup title="Admin">
             <ListRow title="Admin panel" subtitle="Platform tools" icon={Shield} badge={{ label: admin === 'super_admin' ? 'Super admin' : 'Support', tone: 'neutral' }} chevron onPress={() => router.push('/admin')} />
@@ -132,7 +179,7 @@ export default function More() {
             <LogOut size={20} color={colors.danger} />
             <Text style={styles.logoutText}>{loggingOut ? 'Logging out…' : 'Log out'}</Text>
           </Pressable>
-          <Text style={styles.version}>Version {Constants.expoConfig?.version ?? '—'}</Text>
+          <Text style={styles.version}>Version {appVersion}</Text>
         </Card>
       </ScrollView>
     </SafeAreaView>

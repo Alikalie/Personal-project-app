@@ -4,16 +4,21 @@
     "slug": "salonebiz-manager",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/mishop-icon.png",
     "scheme": "salonebizmanager",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/images/icon.png"
+      "icon": "./assets/images/mishop-icon.png"
     },
     "android": {
+      "package": "com.mishop.app",
+      "allowBackup": false,
+      "permissions": [
+        "android.permission.CAMERA"
+      ],
       "adaptiveIcon": {
         "backgroundColor": "#159B4A",
-        "foregroundImage": "./assets/images/android-icon-foreground.png"
+        "foregroundImage": "./assets/images/mishop-icon.png"
       },
       "predictiveBackGestureEnabled": false
     },

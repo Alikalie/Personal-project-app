@@ -1,3 +1,4 @@
+import { safeLogger } from '@/lib/safeLogger';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 
@@ -36,7 +37,7 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
       });
       setReady(true);
     }).catch((error: unknown) => {
-      console.warn('Unable to load display preferences', error);
+      safeLogger.warn('Unable to load display preferences', error);
       if (active) setReady(true);
     });
     return () => { active = false; };

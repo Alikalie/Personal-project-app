@@ -1,3 +1,4 @@
+import { safeLogger } from '@/lib/safeLogger';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 import * as Linking from 'expo-linking';
@@ -40,7 +41,7 @@ export function AppReleaseGate({ children }: { children: ReactNode }) {
       setStatus(release);
       setDeferred(hasDeferred);
     } catch (error) {
-      console.warn('Release status setup failed:', error);
+      safeLogger.warn('Release status setup failed:', error);
       setStatus(null);
     }
   }, [platform, version]);
@@ -74,17 +75,20 @@ export function AppReleaseGate({ children }: { children: ReactNode }) {
 
   if (status?.updateRequired) {
     return (
-      <View style={styles.required}>
+      <ScrollView style={styles.required} contentContainerStyle={styles.requiredContent}>
         <Text style={styles.title}>Please update {settings.appName}</Text>
         <Text style={styles.body}>Version {status.latestVersion} is required to continue.</Text>
+        {Platform.OS === 'android' ? (
+          <Text style={styles.body}>Download and install the APK from the release page, then reopen MiShop.</Text>
+        ) : null}
         {status.releaseNotes ? <Text style={styles.notes}>{status.releaseNotes}</Text> : null}
         {linkError ? <Text style={styles.body}>{linkError}</Text> : null}
         {status.updateUrl ? (
-          <Button label="Update MiShop" onPress={() => void openUpdate()} loading={opening} />
+          <Button label="Download update" onPress={() => void openUpdate()} loading={opening} />
         ) : (
           <Text style={styles.body}>Contact support: {settings.supportEmail}</Text>
         )}
-      </View>
+      </ScrollView>
     );
   }
 
@@ -117,7 +121,8 @@ export function AppReleaseGate({ children }: { children: ReactNode }) {
 }
 
 const styles = StyleSheet.create({
-  required: { flex: 1, justifyContent: 'center', padding: Spacing.five, gap: Spacing.three, backgroundColor: colors.background },
+  required: { flex: 1, backgroundColor: colors.background },
+  requiredContent: { flexGrow: 1, justifyContent: 'center', padding: Spacing.five, gap: Spacing.three },
   title: { color: colors.text, ...typography.title },
   body: { color: colors.textSecondary, ...typography.body },
   notes: { color: colors.text, ...typography.body, lineHeight: 23 },

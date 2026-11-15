@@ -1,3 +1,4 @@
+import { safeLogger } from '@/lib/safeLogger';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, FlatList, Modal, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
@@ -234,7 +235,7 @@ export default function Sales() {
       try {
         savedSale = await getSale(savedSaleId);
       } catch (receiptLoadError) {
-        console.warn('Sale was recorded; using in-memory receipt details:', receiptLoadError);
+        safeLogger.warn('Sale was recorded; using in-memory receipt details:', receiptLoadError);
       }
 
       cart.clearCart();
@@ -264,7 +265,7 @@ export default function Sales() {
           show_logo_on_receipt: ctx?.business?.showLogoOnReceipt ?? false,
         }, cashChange.changeMinor);
       } catch (receiptError) {
-        console.warn('Sale completed, but receipt details could not be prepared:', receiptError);
+        safeLogger.warn('Sale completed, but receipt details could not be prepared:', receiptError);
         refreshWarnings.push('The sale is complete, but its receipt could not be prepared.');
       }
       setPostSaleWarning(refreshWarnings.join(' '));

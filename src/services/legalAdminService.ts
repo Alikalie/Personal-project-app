@@ -1,3 +1,4 @@
+import { safeLogger } from '@/lib/safeLogger';
 import { friendlyErrorMessage } from '@/lib/errors';
 import { supabase } from '@/lib/supabase';
 import type { LegalDocument, LegalDocumentType } from '@/services/legalService';
@@ -5,7 +6,7 @@ import type { LegalDocument, LegalDocumentType } from '@/services/legalService';
 export type LegalVersionRow = LegalDocument & { status: 'draft' | 'published' | 'archived' };
 
 function report(operation: string, error: unknown): Error {
-  console.warn(`${operation} failed:`, error);
+  safeLogger.warn(`${operation} failed:`, error);
   return new Error(friendlyErrorMessage(error, 'admin'));
 }
 

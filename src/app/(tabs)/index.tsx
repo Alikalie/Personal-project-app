@@ -1,3 +1,4 @@
+import { safeLogger } from '@/lib/safeLogger';
 import { useCallback, useEffect, useState } from 'react';
 import {
   Pressable,
@@ -87,7 +88,7 @@ export default function Dashboard() {
       setAnnouncements(result.items);
       setDismissedAnnouncements(dismissed);
     } catch (contentError) {
-      console.warn('Announcements are unavailable:', contentError);
+      safeLogger.warn('Announcements are unavailable:', contentError);
     }
   }, []);
 
@@ -196,7 +197,7 @@ export default function Dashboard() {
               announcement={announcement}
               onDismiss={() => {
                 void dismissAnnouncement(announcement.id).then(setDismissedAnnouncements).catch((dismissError: unknown) => {
-                  console.warn('Announcement could not be dismissed:', dismissError);
+                  safeLogger.warn('Announcement could not be dismissed:', dismissError);
                 });
               }}
             />

@@ -1,3 +1,4 @@
+import { safeLogger } from '@/lib/safeLogger';
 import { friendlyErrorMessage } from '@/lib/errors';
 import { newId } from '@/lib/uuid';
 import { supabase } from '@/lib/supabase';
@@ -75,7 +76,7 @@ export async function listExpenseCategories(businessId: string): Promise<Expense
     .eq('business_id', businessId)
     .order('name', { ascending: true });
   if (error) {
-    console.warn('Expense categories query failed:', error);
+    safeLogger.warn('Expense categories query failed:', error);
     throw new Error(friendlyErrorMessage(error));
   }
   return (data ?? []).map(mapCategory);
@@ -89,7 +90,7 @@ export async function createExpenseCategory(businessId: string, name: string): P
     .select('id, business_id, name')
     .single();
   if (error) {
-    console.warn('Expense category creation failed:', error);
+    safeLogger.warn('Expense category creation failed:', error);
     throw new Error(friendlyErrorMessage(error));
   }
   return mapCategory(data);
@@ -103,7 +104,7 @@ export async function listExpenses(businessId: string): Promise<Expense[]> {
     .order('created_at', { ascending: false })
     .limit(50);
   if (error) {
-    console.warn('Expenses query failed:', error);
+    safeLogger.warn('Expenses query failed:', error);
     throw new Error(friendlyErrorMessage(error));
   }
   return (data ?? []).map(mapExpense);
@@ -138,7 +139,7 @@ export async function createExpense(input: {
     .select('id, business_id, amount_minor, category_id, description, payment_method, expense_date, created_at, category:expense_categories(name)')
     .single();
   if (error) {
-    console.warn('Expense creation failed:', error);
+    safeLogger.warn('Expense creation failed:', error);
     throw new Error(friendlyErrorMessage(error));
   }
   return mapExpense(data);

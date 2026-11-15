@@ -1,9 +1,10 @@
+import { safeLogger } from '@/lib/safeLogger';
 import type { CartItem } from '@/lib/cart';
 import { calculateCartTotals } from '@/lib/cart';
 import { friendlyErrorMessage } from '@/lib/errors';
 import { supabase } from '@/lib/supabase';
 import type { Customer } from '@/services/customerService';
-import { getImageUrl, type Product } from '@/services/productService';
+import { getImageUrls, type Product } from '@/services/productService';
 import * as FileSystem from 'expo-file-system/legacy';
 
 export type PaymentMethod = 'cash' | 'orange_money' | 'afrimoney' | 'other';
@@ -166,7 +167,8 @@ export async function listSellableProducts(businessId: string, options: { search
   const categoryNames = new Map((categoriesResult.data ?? []).flatMap((row) =>
     typeof row.id === 'string' && typeof row.name === 'string' ? [[row.id, row.name] as const] : [],
   ));
-  return Promise.all(rows.map(async (row) => ({
+  const imageUrls = await getImageUrls(rows.map((row) => row.image_path));
+  return rows.map((row) => ({
     id: row.id,
     business_id: row.business_id,
     category_id: row.category_id,
@@ -174,14 +176,14 @@ export async function listSellableProducts(businessId: string, options: { search
     sku: row.sku,
     barcode: row.barcode,
     image_path: row.image_path,
-    image_url: row.image_path ? await getImageUrl(row.image_path) : null,
+    image_url: row.image_path ? imageUrls.get(row.image_path) ?? null : null,
     cost_price_minor: row.cost_price_minor,
     selling_price_minor: row.selling_price_minor,
     quantity: row.quantity,
     low_stock_threshold: row.low_stock_threshold,
     deleted_at: row.deleted_at,
     category_name: typeof row.category_id === 'string' ? categoryNames.get(row.category_id) ?? null : null,
-  } as Product)));
+  } as Product));
 }
 
 export async function createSale(input: CreateSaleInput): Promise<string> {
@@ -245,7 +247,7 @@ export async function createSale(input: CreateSaleInput): Promise<string> {
     if (error) throw error;
     return typeof data === 'string' ? data : input.saleId;
   } catch (error) {
-    console.warn('create_sale RPC failed:', error);
+    safeLogger.warn('create_sale RPC failed:', error);
     throw new Error(friendlyErrorMessage(error, 'sale'));
   }
 }
@@ -375,13 +377,13 @@ export async function getReceiptData(saleId: string): Promise<SaleReceiptData> {
       const base64 = await FileSystem.readAsStringAsync(result.uri, { encoding: FileSystem.EncodingType.Base64 });
       if (base64) logoDataUri = `data:${mimeType};base64,${base64}`;
     } catch (logoError) {
-      console.warn('Receipt logo could not be embedded; continuing without it:', logoError);
+      safeLogger.warn('Receipt logo could not be embedded; continuing without it:', logoError);
     } finally {
       if (downloadedUri) {
         try {
           await FileSystem.deleteAsync(downloadedUri, { idempotent: true });
         } catch (cleanupError) {
-          console.warn('Temporary receipt logo could not be removed:', cleanupError);
+          safeLogger.warn('Temporary receipt logo could not be removed:', cleanupError);
         }
       }
     }

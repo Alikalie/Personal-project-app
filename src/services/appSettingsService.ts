@@ -1,3 +1,4 @@
+import { safeLogger } from '@/lib/safeLogger';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { support } from '@/constants/support';
@@ -56,13 +57,13 @@ export async function getPublicAppSettings(): Promise<PublicAppSettings> {
     .in('key', keys);
 
   if (error) {
-    console.warn('Public app settings query failed:', error);
+    safeLogger.warn('Public app settings query failed:', error);
     const cached = await AsyncStorage.getItem(storageKey);
     if (!cached) throw error;
     try {
       return { ...defaults, ...JSON.parse(cached) as Partial<PublicAppSettings> };
     } catch (cacheError) {
-      console.warn('Cached public app settings could not be read:', cacheError);
+      safeLogger.warn('Cached public app settings could not be read:', cacheError);
       return defaults;
     }
   }

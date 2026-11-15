@@ -1,3 +1,4 @@
+import { safeLogger } from '@/lib/safeLogger';
 import { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -165,7 +166,7 @@ export default function ExpensesScreen() {
       }
       if (refreshErrors.length) setNotice(`Expense saved. ${refreshErrors.join('. ')}`);
     } catch (saveError) {
-      console.warn('Expense save failed:', saveError);
+      safeLogger.warn('Expense save failed:', saveError);
       setError(friendlyErrorMessage(saveError));
     } finally {
       setSaving(false);
@@ -183,7 +184,7 @@ export default function ExpensesScreen() {
       setNewCategoryName('');
       setShowCategoryForm(false);
     } catch (categorySaveError) {
-      console.warn('Expense category save failed:', categorySaveError);
+      safeLogger.warn('Expense category save failed:', categorySaveError);
       setCategoryError(friendlyErrorMessage(categorySaveError));
     } finally {
       setSavingCategory(false);

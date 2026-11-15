@@ -1,3 +1,4 @@
+import { safeLogger } from '@/lib/safeLogger';
 import { decode } from 'base64-arraybuffer';
 import { File } from 'expo-file-system';
 import * as LegacyFileSystem from 'expo-file-system/legacy';
@@ -26,7 +27,7 @@ export type BusinessCurrencyUpdate = { currency_code: string };
 const logoUrlCache = new Map<string, { url: string; expiresAt: number }>();
 
 function settingError(error: unknown): Error {
-  console.warn('Settings request failed', error);
+  safeLogger.warn('Settings request failed', error);
   return new Error(friendlyErrorMessage(error));
 }
 
@@ -125,7 +126,7 @@ export async function getLogoDataUri(path: string | null): Promise<string | null
       try {
         await LegacyFileSystem.deleteAsync(downloadedUri, { idempotent: true });
       } catch (error) {
-        console.warn('Temporary receipt preview logo could not be removed:', error);
+        safeLogger.warn('Temporary receipt preview logo could not be removed:', error);
       }
     }
   }
@@ -145,7 +146,7 @@ export async function updatePassword(currentPassword: string, newPassword: strin
       password: currentPassword,
     });
     if (verificationError || verifiedSession.user?.id !== currentUser.id) {
-      console.warn('Password change reauthentication failed.');
+      safeLogger.warn('Password change reauthentication failed.');
       throw new Error('Your current password is incorrect.');
     }
 

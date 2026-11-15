@@ -1,3 +1,4 @@
+import { safeLogger } from '@/lib/safeLogger';
 import Constants from 'expo-constants';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -41,13 +42,13 @@ export function LegalAcceptanceGate({ children }: { children: React.ReactNode })
           const published = await getPublishedLegalDocument(item.doc_type);
           return { ...item, changeSummary: published.document.change_summary };
         } catch (documentError) {
-          console.warn('Legal change summary could not be loaded:', documentError);
+          safeLogger.warn('Legal change summary could not be loaded:', documentError);
           return { ...item, changeSummary: null };
         }
       }));
       setRequired(details);
     } catch (checkError) {
-      console.warn('Legal acceptance check failed:', checkError);
+      safeLogger.warn('Legal acceptance check failed:', checkError);
       if (await hasPreviouslyAcceptedLegal(userId)) {
         setRequired([]);
       } else {
@@ -86,7 +87,7 @@ export function LegalAcceptanceGate({ children }: { children: React.ReactNode })
       await acceptPublishedLegalDocuments(Constants.expoConfig?.version ?? '1.0.0', ctx.id);
       setRequired([]);
     } catch (acceptError) {
-      console.warn('Legal acceptance could not be saved:', acceptError);
+      safeLogger.warn('Legal acceptance could not be saved:', acceptError);
       setError(friendlyErrorMessage(acceptError));
     } finally {
       setSaving(false);
@@ -101,7 +102,7 @@ export function LegalAcceptanceGate({ children }: { children: React.ReactNode })
       await signOut();
       router.replace('/welcome');
     } catch (logoutError) {
-      console.warn('Could not log out from the legal acceptance screen:', logoutError);
+      safeLogger.warn('Could not log out from the legal acceptance screen:', logoutError);
       setError(friendlyErrorMessage(logoutError));
     } finally {
       setLoggingOut(false);

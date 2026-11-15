@@ -1,3 +1,4 @@
+import { safeLogger } from '@/lib/safeLogger';
 import { Alert, Linking, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { Check } from 'lucide-react-native';
@@ -27,7 +28,7 @@ export default function SubscriptionSettings() {
     try {
       await Linking.openURL(url);
     } catch {
-      console.warn('Unable to open support email');
+      safeLogger.warn('Unable to open support email');
     }
   };
 

@@ -109,44 +109,43 @@ async function categoryNames(categoryIds: string[]): Promise<Map<string, string>
 
 async function enrichProducts(rows: unknown[]): Promise<Product[]> {
   const rawRows = rows.map(recordOf);
-  const names = await categoryNames(rawRows.flatMap((row) =>
-    typeof row.category_id === 'string' ? [row.category_id] : [],
-  ));
-  return Promise.all(rawRows.map(async (row) => {
+  const [names, imageUrls] = await Promise.all([
+    categoryNames(rawRows.flatMap((row) =>
+      typeof row.category_id === 'string' ? [row.category_id] : [],
+    )),
+    getImageUrls(rawRows.map((row) => nullableText(row.image_path))),
+  ]);
+  return rawRows.map((row) => {
     const categoryId = nullableText(row.category_id);
     const imagePath = nullableText(row.image_path);
-    const imageUrl = imagePath ? await getImageUrl(imagePath) : null;
+    const imageUrl = imagePath ? imageUrls.get(imagePath) ?? null : null;
     return mapProduct(row, categoryId ? names.get(categoryId) ?? null : null, imageUrl);
-  }));
+  });
 }
 
 export async function listProducts(
   businessId: string,
-  options: { search?: string; categoryId?: string; lowStock?: boolean } = {},
-): Promise<Product[]> {
-  let lowStockIds: string[] | null = null;
-  if (options.lowStock) {
-    const { data, error } = await supabase
-      .from('low_stock_products')
-      .select('id')
-      .eq('business_id', businessId);
-    if (error) throw new Error(friendlyErrorMessage(error));
-    lowStockIds = (data ?? []).flatMap((row) => typeof row.id === 'string' ? [row.id] : []);
-    if (!lowStockIds.length) return [];
-  }
-
-  let query = supabase.from('products')
-    .select('*')
+  options: { search?: string; categoryId?: string; lowStock?: boolean; page?: number; pageSize?: number } = {},
+): Promise<{ rows: Product[]; total: number }> {
+  const page = Math.max(0, Math.floor(options.page ?? 0));
+  const pageSize = Math.min(100, Math.max(1, Math.floor(options.pageSize ?? 30)));
+  const table = options.lowStock ? 'low_stock_products' : 'products';
+  let query = supabase.from(table)
+    .select('*', { count: 'exact' })
     .eq('business_id', businessId)
-    .is('deleted_at', null)
-    .order('name', { ascending: true });
+    .order('name', { ascending: true })
+    .order('id', { ascending: true })
+    .range(page * pageSize, page * pageSize + pageSize - 1);
+  if (!options.lowStock) query = query.is('deleted_at', null);
   if (options.categoryId) query = query.eq('category_id', options.categoryId);
-  if (lowStockIds) query = query.in('id', lowStockIds);
   const search = options.search?.trim().replace(/[%_,()]/g, ' ');
   if (search) query = query.or(`name.ilike.%${search}%,sku.ilike.%${search}%,barcode.ilike.%${search}%`);
-  const { data, error } = await query;
+  const { data, count, error } = await query;
   if (error) throw new Error(friendlyErrorMessage(error));
-  return enrichProducts(data ?? []);
+  return {
+    rows: await enrichProducts(data ?? []),
+    total: count ?? 0,
+  };
 }
 
 export async function getProduct(productId: string): Promise<Product> {
@@ -342,6 +341,44 @@ export async function getStockValuation(businessId: string): Promise<number> {
 }
 
 const imageUrlCache = new Map<string, { url: string; expiresAt: number }>();
+const imageUrlBatchSize = 100;
+
+export async function getImageUrls(imagePaths: Array<string | null>): Promise<Map<string, string>> {
+  const paths = [...new Set(imagePaths.filter((path): path is string => Boolean(path)))];
+  const urls = new Map<string, string>();
+  const missingPaths: string[] = [];
+  const now = Date.now();
+
+  for (const path of paths) {
+    const cached = imageUrlCache.get(path);
+    if (cached && cached.expiresAt > now) urls.set(path, cached.url);
+    else missingPaths.push(path);
+  }
+
+  for (let offset = 0; offset < missingPaths.length; offset += imageUrlBatchSize) {
+    const batch = missingPaths.slice(offset, offset + imageUrlBatchSize);
+    const { data, error } = await supabase.storage
+      .from('product-images')
+      .createSignedUrls(batch, 60 * 60);
+    if (error) throw new Error(friendlyErrorMessage(error));
+
+    const returnedPaths = new Set<string>();
+    for (const image of data) {
+      if (!image.path || !image.signedUrl || image.error) {
+        throw new Error(image.error ? friendlyErrorMessage(image.error) : 'The server returned an invalid product image URL.');
+      }
+      returnedPaths.add(image.path);
+      urls.set(image.path, image.signedUrl);
+      imageUrlCache.set(image.path, { url: image.signedUrl, expiresAt: Date.now() + 55 * 60 * 1000 });
+    }
+
+    if (batch.some((path) => !returnedPaths.has(path))) {
+      throw new Error('The server did not return a URL for every product image.');
+    }
+  }
+
+  return urls;
+}
 
 export function clearProductImageCache() {
   imageUrlCache.clear();
@@ -367,12 +404,7 @@ export async function uploadProductImage(
 }
 
 export async function getImageUrl(imagePath: string): Promise<string | null> {
-  const cached = imageUrlCache.get(imagePath);
-  if (cached && cached.expiresAt > Date.now()) return cached.url;
-  const { data, error } = await supabase.storage.from('product-images').createSignedUrl(imagePath, 60 * 60);
-  if (error) throw new Error(friendlyErrorMessage(error));
-  imageUrlCache.set(imagePath, { url: data.signedUrl, expiresAt: Date.now() + 55 * 60 * 1000 });
-  return data.signedUrl;
+  return (await getImageUrls([imagePath])).get(imagePath) ?? null;
 }
 
 export async function updateProductImagePath(productId: string, imagePath: string): Promise<void> {

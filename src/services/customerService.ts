@@ -1,3 +1,4 @@
+import { safeLogger } from '@/lib/safeLogger';
 import { friendlyErrorMessage } from '@/lib/errors';
 import type { PaymentMethod } from '@/services/salesService';
 import { supabase } from '@/lib/supabase';
@@ -229,7 +230,7 @@ export async function recordRepayment(input: RecordRepaymentInput): Promise<numb
     } catch {
       rawError = String(error);
     }
-    console.warn('record_repayment RPC failed:', rawError);
+    safeLogger.warn('record_repayment RPC failed:', rawError);
     throw error;
   }
 }
@@ -255,7 +256,7 @@ export async function editRepayment(input: EditRepaymentInput): Promise<number> 
     if (!Number.isSafeInteger(balanceMinor)) throw new Error('The server returned an invalid customer balance.');
     return balanceMinor;
   } catch (error) {
-    console.warn('edit_repayment RPC failed:', error);
+    safeLogger.warn('edit_repayment RPC failed:', error);
     throw new Error(friendlyErrorMessage(error, 'repayment'));
   }
 }
@@ -274,7 +275,7 @@ export async function voidRepayment(input: VoidRepaymentInput): Promise<number> 
     if (!Number.isSafeInteger(balanceMinor)) throw new Error('The server returned an invalid customer balance.');
     return balanceMinor;
   } catch (error) {
-    console.warn('void_repayment RPC failed:', error);
+    safeLogger.warn('void_repayment RPC failed:', error);
     throw new Error(friendlyErrorMessage(error, 'repayment'));
   }
 }

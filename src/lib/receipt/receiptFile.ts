@@ -1,3 +1,4 @@
+import { safeLogger } from '@/lib/safeLogger';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Print from 'expo-print';
@@ -53,12 +54,12 @@ export async function createReceiptPdf(data: ReceiptData, layout: ReceiptLayout 
     }
     return targetUri;
   } catch (error) {
-    console.warn('Receipt PDF generation failed:', rawErrorText(error));
+    safeLogger.warn('Receipt PDF generation failed:', rawErrorText(error));
     if (targetUri) {
       try {
         await FileSystem.deleteAsync(targetUri, { idempotent: true });
       } catch (cleanupError) {
-        console.warn('Incomplete receipt PDF could not be removed:', rawErrorText(cleanupError));
+        safeLogger.warn('Incomplete receipt PDF could not be removed:', rawErrorText(cleanupError));
       }
     }
     throw error;
@@ -70,7 +71,7 @@ export async function isReceiptPdfAvailable(uri: string): Promise<boolean> {
     const info = await FileSystem.getInfoAsync(uri);
     return info.exists && 'size' in info && typeof info.size === 'number' && info.size > 0;
   } catch (error) {
-    console.warn('Could not verify cached receipt PDF:', rawErrorText(error));
+    safeLogger.warn('Could not verify cached receipt PDF:', rawErrorText(error));
     return false;
   }
 }
@@ -84,7 +85,7 @@ export async function shareReceipt(uri: string): Promise<void> {
       UTI: 'com.adobe.pdf',
     });
   } catch (error) {
-    console.warn('Receipt sharing failed:', rawErrorText(error));
+    safeLogger.warn('Receipt sharing failed:', rawErrorText(error));
     throw error;
   }
 }
@@ -98,7 +99,7 @@ export async function shareReceiptImage(uri: string): Promise<void> {
       UTI: 'public.png',
     });
   } catch (error) {
-    console.warn('Receipt image sharing failed:', rawErrorText(error));
+    safeLogger.warn('Receipt image sharing failed:', rawErrorText(error));
     throw error;
   }
 }
@@ -120,7 +121,7 @@ async function selectAndroidDirectory(): Promise<{ uri: string; label: string } 
         initialUri = parsed.uri;
       }
     } catch (error) {
-      console.warn('Saved receipt folder could not be read:', rawErrorText(error));
+      safeLogger.warn('Saved receipt folder could not be read:', rawErrorText(error));
       await AsyncStorage.removeItem(savedDirectoryKey);
     }
   }
@@ -171,7 +172,7 @@ export async function downloadReceipt(uri: string, fileName: string): Promise<st
       const directory = storedDirectory ?? await selectAndroidDirectory();
       if (directory) return await writeToAndroidDirectory(uri, directory, fileName);
     } catch (error) {
-      console.warn('Saving receipt to Android storage failed:', rawErrorText(error));
+      safeLogger.warn('Saving receipt to Android storage failed:', rawErrorText(error));
     }
   }
   await shareReceipt(uri);
@@ -190,7 +191,7 @@ export async function printReceipt(data: ReceiptData, layout: ReceiptLayout): Pr
       height: pageSize.height,
     });
   } catch (error) {
-    console.warn('Printing receipt failed:', rawErrorText(error));
+    safeLogger.warn('Printing receipt failed:', rawErrorText(error));
     throw error;
   }
 }

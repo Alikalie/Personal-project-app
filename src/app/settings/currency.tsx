@@ -1,3 +1,4 @@
+import { safeLogger } from '@/lib/safeLogger';
 import { useState } from 'react';
 import { Check, Coins } from 'lucide-react-native';
 import { Switch, Text, View } from 'react-native';
@@ -28,7 +29,7 @@ export default function CurrencySettings() {
       await updateBusiness(ctx.businessId, { currency_code: code });
       await refresh();
     } catch (saveError) {
-      console.warn('Unable to update business currency', saveError);
+      safeLogger.warn('Unable to update business currency', saveError);
       setError(friendlyErrorMessage(saveError));
     } finally {
       setSavingCurrency(false);
@@ -40,7 +41,7 @@ export default function CurrencySettings() {
     try {
       await setPreference('decimals', value);
     } catch (saveError) {
-      console.warn('Unable to save currency display preference', saveError);
+      safeLogger.warn('Unable to save currency display preference', saveError);
       setError('Could not save this display preference. Please try again.');
     }
   };

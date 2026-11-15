@@ -1,3 +1,4 @@
+import { safeLogger } from '@/lib/safeLogger';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { friendlyErrorMessage } from '@/lib/errors';
@@ -36,7 +37,7 @@ export type AppSettingRow = {
 };
 
 function report(operation: string, error: unknown): Error {
-  console.warn(`${operation} failed:`, error);
+  safeLogger.warn(`${operation} failed:`, error);
   return new Error(friendlyErrorMessage(error, 'admin'));
 }
 
@@ -75,7 +76,7 @@ async function getCached<T>(key: string, validate: (value: unknown) => value is 
     const parsed: unknown = JSON.parse(value);
     return Array.isArray(parsed) ? parsed.filter(validate) : [];
   } catch (error) {
-    console.warn('Cached public content is invalid:', error);
+    safeLogger.warn('Cached public content is invalid:', error);
     await AsyncStorage.removeItem(key);
     return [];
   }
@@ -86,7 +87,7 @@ export async function listActiveAnnouncements(): Promise<{ items: Announcement[]
     .select('id, title, message, severity, audience, starts_at, ends_at')
     .eq('is_active', true);
   if (error) {
-    console.warn('Public announcements query failed:', error);
+    safeLogger.warn('Public announcements query failed:', error);
     return { items: await getCached(announcementsCacheKey, isAnnouncement), offline: true };
   }
 
@@ -104,7 +105,7 @@ export async function listPublishedFAQ(): Promise<{ items: FAQItem[]; offline: b
     .eq('is_published', true)
     .order('sort_order', { ascending: true });
   if (error) {
-    console.warn('Published FAQ query failed:', error);
+    safeLogger.warn('Published FAQ query failed:', error);
     return { items: await getCached(faqCacheKey, isFAQItem), offline: true };
   }
 
@@ -121,7 +122,7 @@ export async function getDismissedAnnouncementIds(): Promise<string[]> {
     const parsed: unknown = JSON.parse(value);
     return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === 'string') : [];
   } catch (error) {
-    console.warn('Dismissed announcement list is invalid:', error);
+    safeLogger.warn('Dismissed announcement list is invalid:', error);
     await AsyncStorage.removeItem(key);
     return [];
   }

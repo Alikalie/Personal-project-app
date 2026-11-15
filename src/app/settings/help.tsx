@@ -1,3 +1,4 @@
+import { safeLogger } from '@/lib/safeLogger';
 import Constants from 'expo-constants';
 import * as Device from 'expo-device';
 import * as Linking from 'expo-linking';
@@ -34,7 +35,7 @@ export default function HelpSettings() {
       setFaq(result.items);
       setFaqOffline(result.offline);
     } catch (error) {
-      console.warn('FAQ could not be loaded:', error);
+      safeLogger.warn('FAQ could not be loaded:', error);
       setFaqError('Could not load frequently asked questions.');
     } finally {
       setFaqLoading(false);
@@ -54,7 +55,7 @@ export default function HelpSettings() {
     try {
       await Linking.openURL(safeUrl);
     } catch {
-      console.warn(`Unable to open ${title} contact link`);
+      safeLogger.warn(`Unable to open ${title} contact link`);
       Alert.alert('Unable to open contact', `Please check that a ${title.toLowerCase()} app is available on this device.`);
     }
   };

@@ -1,3 +1,4 @@
+import { safeLogger } from '@/lib/safeLogger';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
@@ -43,7 +44,7 @@ export default function LegalDocumentScreen() {
       setDocument(result.document);
       setOffline(result.offline);
     } catch (loadError) {
-      console.warn('Legal document could not be loaded:', loadError);
+      safeLogger.warn('Legal document could not be loaded:', loadError);
       setError(loadError instanceof Error ? loadError.message : 'Could not load this document.');
     } finally {
       setLoading(false);

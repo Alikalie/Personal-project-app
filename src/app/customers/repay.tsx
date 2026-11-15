@@ -1,3 +1,4 @@
+import { safeLogger } from '@/lib/safeLogger';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
@@ -73,8 +74,6 @@ export default function RepayCustomer() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
-  const [technicalError, setTechnicalError] = useState('');
-  const [showTechnical, setShowTechnical] = useState(false);
   const [refreshWarning, setRefreshWarning] = useState('');
   const [receipt, setReceipt] = useState<ReceiptData | null>(null);
   const [paidMinor, setPaidMinor] = useState(0);
@@ -98,7 +97,7 @@ export default function RepayCustomer() {
       setCustomer(profile);
       setBalanceMinor(liveBalance);
     } catch (loadError) {
-      console.warn('Could not load repayment details:', loadError);
+      safeLogger.warn('Could not load repayment details:', loadError);
       setError(friendlyErrorMessage(loadError, 'repayment-record'));
     } finally {
       setLoading(false);
@@ -152,8 +151,6 @@ export default function RepayCustomer() {
     submitLock.current = true;
     setSubmitting(true);
     setError('');
-    setTechnicalError('');
-    setShowTechnical(false);
     const fingerprint = JSON.stringify([
       businessId,
       customerId,
@@ -199,9 +196,8 @@ export default function RepayCustomer() {
       attempt.current = null;
       await refreshAfterPayment();
     } catch (failure) {
-      console.warn('Repayment failed:', failure);
+      safeLogger.warn('Repayment failed:', failure);
       setError(friendlyErrorMessage(failure, 'repayment-record'));
-      setTechnicalError(failure instanceof Error ? failure.message : String(failure));
     } finally {
       submitLock.current = false;
       setSubmitting(false);
@@ -330,14 +326,6 @@ export default function RepayCustomer() {
             <Text style={styles.balancePreview}>{formatSLE(nextBalance)}</Text>
           </View>
           {error ? <Text style={styles.error}>{error}</Text> : null}
-          {error && __DEV__ && technicalError ? (
-            <>
-              <Pressable onPress={() => setShowTechnical((value) => !value)} accessibilityRole="button">
-                <Text style={styles.technicalToggle}>{showTechnical ? 'Hide technical details' : 'Technical details'}</Text>
-              </Pressable>
-              {showTechnical ? <Text style={styles.technical}>{technicalError}</Text> : null}
-            </>
-          ) : null}
           <Button
             label={error ? 'Try again' : 'Confirm payment'}
             onPress={() => void submit()}
@@ -372,8 +360,6 @@ const styles = StyleSheet.create({
   balancePreview: { color: colors.primaryDark, ...typography.label },
   inlineReason: { color: colors.danger, ...typography.caption },
   error: { color: colors.danger, ...typography.caption },
-  technicalToggle: { color: colors.textSecondary, ...typography.caption, textDecorationLine: 'underline' },
-  technical: { color: colors.textSecondary, ...typography.caption },
   warning: { color: colors.warning, ...typography.caption },
   successTitle: { color: colors.success, ...typography.heading, textAlign: 'center' },
   successValue: { color: colors.primaryDark, fontSize: 28, fontWeight: '800', textAlign: 'center' },

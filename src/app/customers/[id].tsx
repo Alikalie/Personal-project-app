@@ -1,3 +1,4 @@
+import { safeLogger } from '@/lib/safeLogger';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Modal, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
@@ -195,7 +196,7 @@ export default function CustomerProfile() {
         cashierName: ctx?.name ?? 'Team member',
       });
     } catch (receiptError) {
-      console.warn('Could not prepare payment receipt:', receiptError);
+      safeLogger.warn('Could not prepare payment receipt:', receiptError);
       return null;
     }
   }, [ctx, customer, ledger, selectedEntry]);

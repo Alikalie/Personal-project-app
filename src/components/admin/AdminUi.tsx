@@ -1,3 +1,4 @@
+import { safeLogger } from '@/lib/safeLogger';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Modal,
@@ -43,7 +44,7 @@ export function AdminScreen({
 
   useEffect(() => {
     void loadSupportAccess().catch((error: unknown) => {
-      console.warn('Support access status could not be loaded:', error);
+      safeLogger.warn('Support access status could not be loaded:', error);
       setSupportError('Support access status could not be checked.');
     });
   }, [loadSupportAccess]);
@@ -56,7 +57,7 @@ export function AdminScreen({
       if (remaining === 0 && expirationHandled.current !== supportAccess.id) {
         expirationHandled.current = supportAccess.id;
         void endSupportAccess(supportAccess.id).then(() => setSupportAccess(null)).catch((error: unknown) => {
-          console.warn('Expired support session could not be ended:', error);
+          safeLogger.warn('Expired support session could not be ended:', error);
           setSupportError('Support access expired. End the session again or retry.');
         });
       }
@@ -76,7 +77,7 @@ export function AdminScreen({
       setSupportAccess(null);
     } catch (error) {
       expirationHandled.current = null;
-      console.warn('Support access could not be ended:', error);
+      safeLogger.warn('Support access could not be ended:', error);
       setSupportError('Could not end support access. Try again.');
     } finally {
       setEndingSupportAccess(false);

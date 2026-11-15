@@ -1,3 +1,4 @@
+import { safeLogger } from '@/lib/safeLogger';
 import { supabase } from '@/lib/supabase';
 
 function csvCell(value: string): string {
@@ -8,7 +9,7 @@ function csvCell(value: string): string {
 export async function exportConsentedMarketingEmails(): Promise<{ csv: string; count: number }> {
   const { data, error } = await supabase.rpc('admin_export_emails', { p_only_marketing: true });
   if (error) {
-    console.warn('Marketing email export RPC failed:', error);
+    safeLogger.warn('Marketing email export RPC failed:', error);
     throw new Error('Could not export opted-in email addresses. Confirm your admin access and try again.');
   }
 

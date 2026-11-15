@@ -1,3 +1,4 @@
+import { safeLogger } from '@/lib/safeLogger';
 import { useEffect, useState } from 'react';
 import { Switch, Text, View } from 'react-native';
 
@@ -40,7 +41,7 @@ export default function NotificationSettings() {
     try {
       await setPreference(key, value);
     } catch (saveError) {
-      console.warn('Unable to save notification preference', saveError);
+      safeLogger.warn('Unable to save notification preference', saveError);
       setError('Could not save this preference. Please try again.');
     }
   };

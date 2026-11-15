@@ -1,3 +1,4 @@
+import { safeLogger } from '@/lib/safeLogger';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import ViewShot, { type ViewShotRef } from 'react-native-view-shot';
@@ -26,8 +27,6 @@ export function ReceiptActions({
   const [layout, setLayout] = useState<ReceiptLayout>('compact');
   const [busy, setBusy] = useState<Action>(null);
   const [error, setError] = useState('');
-  const [technicalError, setTechnicalError] = useState('');
-  const [showTechnical, setShowTechnical] = useState(false);
   const [message, setMessage] = useState('');
 
   const createPdf = useCallback(async (targetLayout: ReceiptLayout): Promise<string> => {
@@ -36,7 +35,7 @@ export function ReceiptActions({
     try {
       await saveReceiptData(cacheKey ?? data.receiptNo, data);
     } catch (storeError) {
-      console.warn('Receipt data could not be cached:', storeError);
+      safeLogger.warn('Receipt data could not be cached:', storeError);
     }
     return uri;
   }, [cacheKey, data]);
@@ -51,9 +50,8 @@ export function ReceiptActions({
       if (active) setMessage('Receipt ready.');
     }).catch((failure: unknown) => {
       if (!active) return;
-      console.warn('Receipt preparation failed:', failure);
+      safeLogger.warn('Receipt preparation failed:', failure);
       setError(receiptFriendlyError(failure));
-      setTechnicalError(failure instanceof Error ? failure.message : String(failure));
     }).finally(() => {
       if (active) setBusy(null);
     });
@@ -66,15 +64,12 @@ export function ReceiptActions({
     if (busy) return;
     setBusy(action);
     setError('');
-    setTechnicalError('');
-    setShowTechnical(false);
     setMessage('');
     try {
       await task();
     } catch (failure) {
-      console.warn('Receipt action failed:', failure);
+      safeLogger.warn('Receipt action failed:', failure);
       setError(receiptFriendlyError(failure));
-      setTechnicalError(failure instanceof Error ? failure.message : String(failure));
     } finally {
       setBusy(null);
     }
@@ -117,14 +112,6 @@ export function ReceiptActions({
         <ReceiptHtmlPreview data={data} layout={layout} />
       </ViewShot>
       {error ? <Text style={styles.error}>{error}</Text> : null}
-      {error && __DEV__ && technicalError ? (
-        <>
-          <Pressable onPress={() => setShowTechnical((value) => !value)} accessibilityRole="button">
-            <Text style={styles.technicalToggle}>{showTechnical ? 'Hide technical details' : 'Technical details'}</Text>
-          </Pressable>
-          {showTechnical ? <Text style={styles.technical}>{technicalError}</Text> : null}
-        </>
-      ) : null}
       {message ? <Text style={styles.message}>{message}</Text> : null}
       {error && busy === null ? (
         <Button label="Try again" onPress={() => void run('generate', async () => { await createPdf(layout); setMessage('Receipt ready.'); })} loading={busy === 'generate'} disabled={saving} />
@@ -191,8 +178,6 @@ const styles = StyleSheet.create({
   layoutText: { color: colors.textSecondary, ...typography.label },
   layoutTextSelected: { color: colors.primaryDark },
   error: { color: colors.danger, ...typography.caption },
-  technicalToggle: { color: colors.textSecondary, ...typography.caption, textDecorationLine: 'underline' },
-  technical: { color: colors.textSecondary, ...typography.caption },
   message: { color: colors.success, ...typography.caption },
   generating: { color: colors.textSecondary, ...typography.caption, textAlign: 'center' },
 });

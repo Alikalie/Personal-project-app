@@ -1,3 +1,4 @@
+import { safeLogger } from '@/lib/safeLogger';
 import { useCallback, useEffect, useState } from 'react';
 import { FlatList, Modal, Pressable, RefreshControl, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
@@ -70,7 +71,7 @@ export default function SupportAccessScreen() {
       setWriteAccess(false);
       router.push({ pathname: '/admin/support-access/[id]', params: { id: selected.business_id, sessionId: session.id } });
     } catch (startError) {
-      console.warn('Support access could not be opened:', startError);
+      safeLogger.warn('Support access could not be opened:', startError);
       setError(friendlyErrorMessage(startError, 'admin'));
     } finally {
       setSaving(false);

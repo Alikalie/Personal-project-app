@@ -1,3 +1,4 @@
+import { safeLogger } from '@/lib/safeLogger';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 
 import {
@@ -22,7 +23,7 @@ export function PublicAppSettingsProvider({ children }: { children: ReactNode })
 
   useEffect(() => {
     void refresh().catch((error: unknown) => {
-      console.warn('Public app settings are unavailable; using defaults:', error);
+      safeLogger.warn('Public app settings are unavailable; using defaults:', error);
     });
   }, [refresh]);
 

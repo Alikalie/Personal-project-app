@@ -1,3 +1,4 @@
+import { safeLogger } from '@/lib/safeLogger';
 import { friendlyErrorMessage } from '@/lib/errors';
 import { supabase } from '@/lib/supabase';
 
@@ -15,7 +16,7 @@ export type AppRelease = {
 export type AppReleaseInput = Omit<AppRelease, 'id' | 'status'>;
 
 function report(operation: string, error: unknown): Error {
-  console.warn(`${operation} failed:`, error);
+  safeLogger.warn(`${operation} failed:`, error);
   return new Error(friendlyErrorMessage(error, 'admin'));
 }
 

@@ -1,3 +1,4 @@
+import { safeLogger } from '@/lib/safeLogger';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { friendlyErrorMessage } from '@/lib/errors';
@@ -49,7 +50,7 @@ export function getSupportEditableFields(table: SupportDataTable): readonly stri
 }
 
 function report(operation: string, error: unknown): Error {
-  console.warn(`${operation} failed:`, error);
+  safeLogger.warn(`${operation} failed:`, error);
   return new Error(friendlyErrorMessage(error, 'admin'));
 }
 
@@ -108,7 +109,7 @@ export async function getSavedSupportAccess(): Promise<SupportAccessSession | nu
       write: row.write,
     };
   } catch (error) {
-    console.warn('Saved support session could not be read:', error);
+    safeLogger.warn('Saved support session could not be read:', error);
     await AsyncStorage.removeItem(sessionKey);
     return null;
   }

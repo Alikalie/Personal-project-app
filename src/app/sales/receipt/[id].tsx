@@ -1,3 +1,4 @@
+import { safeLogger } from '@/lib/safeLogger';
 import { useCallback, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
@@ -40,7 +41,7 @@ export default function SaleReceiptScreen() {
       await saveReceiptData(`sale/${id}`, receipt);
       setData(receipt);
     } catch (loadError) {
-      console.warn('Could not load receipt:', loadError);
+      safeLogger.warn('Could not load receipt:', loadError);
       if (!cachedReceipt) setError(friendlyErrorMessage(loadError, 'receipt'));
     } finally {
       setLoading(false);

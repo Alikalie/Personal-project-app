@@ -1,3 +1,4 @@
+import { safeLogger } from '@/lib/safeLogger';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { usePreventScreenCapture } from 'expo-screen-capture';
 import { useEffect, useRef, useState } from 'react';
@@ -97,7 +98,7 @@ function AdminProtection({ children }: { children: React.ReactNode }) {
       logoutStarted.current = false;
       setSigningOut(false);
       setError(friendlyErrorMessage(signOutError, 'admin'));
-      console.warn('Admin inactivity sign-out failed.');
+      safeLogger.warn('Admin inactivity sign-out failed.');
     }
   };
 

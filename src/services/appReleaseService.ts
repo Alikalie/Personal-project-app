@@ -1,3 +1,4 @@
+import { safeLogger } from '@/lib/safeLogger';
 import { supabase } from '@/lib/supabase';
 
 export type AppReleaseStatus = {
@@ -53,9 +54,9 @@ export async function getAppReleaseStatus(
     return mapStatus(result.data);
   } catch (error) {
     if (error instanceof Error && error.message === 'Update check timed out.') {
-      console.info('App update check timed out; continuing without blocking startup.');
+      safeLogger.info('App update check timed out; continuing without blocking startup.');
     } else {
-      console.warn('App update check failed; continuing without blocking startup:', error);
+      safeLogger.warn('App update check failed; continuing without blocking startup:', error);
     }
     return null;
   } finally {

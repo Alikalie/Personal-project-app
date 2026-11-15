@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   FlatList,
   Pressable,
@@ -29,6 +29,7 @@ import {
 
 type StockSummary = { total: number; lowStock: number; value: number };
 type Filter = { categoryId: string | null; lowStock: boolean };
+const productPageSize = 30;
 
 export default function Stock() {
   const { ctx } = useAuth();
@@ -43,8 +44,12 @@ export default function Stock() {
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
+  const requestId = useRef(0);
+  const loadingMoreRef = useRef(false);
 
   const refreshSummary = useCallback(async () => {
     if (!businessId) throw new Error('Your business is not available.');
@@ -59,6 +64,7 @@ export default function Stock() {
   }, [businessId, showValuation]);
 
   const loadProducts = useCallback(async (isRefresh = false) => {
+    const currentRequestId = ++requestId.current;
     if (!businessId) {
       setLoading(false);
       setError('Your business is not available. Please sign in again.');
@@ -68,22 +74,54 @@ export default function Stock() {
     else setLoading(true);
     setError('');
     try {
-      const [filteredProducts] = await Promise.all([
+      const [productPage] = await Promise.all([
         listProducts(businessId, {
           search: debouncedSearch,
           categoryId: filter.categoryId ?? undefined,
           lowStock: filter.lowStock,
+          page: 0,
+          pageSize: productPageSize,
         }),
         refreshSummary(),
       ]);
-      setProducts(filteredProducts);
+      if (currentRequestId !== requestId.current) return;
+      setProducts(productPage.rows);
+      setHasMore(productPage.rows.length < productPage.total);
     } catch (loadError) {
+      if (currentRequestId !== requestId.current) return;
       setError(friendlyErrorMessage(loadError));
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      if (currentRequestId === requestId.current) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
   }, [businessId, debouncedSearch, filter.categoryId, filter.lowStock, refreshSummary]);
+
+  const loadMoreProducts = useCallback(async () => {
+    if (!businessId || loading || !hasMore || loadingMoreRef.current) return;
+    loadingMoreRef.current = true;
+    setLoadingMore(true);
+    const currentRequestId = requestId.current;
+    const page = Math.floor(products.length / productPageSize);
+    try {
+      const result = await listProducts(businessId, {
+        search: debouncedSearch,
+        categoryId: filter.categoryId ?? undefined,
+        lowStock: filter.lowStock,
+        page,
+        pageSize: productPageSize,
+      });
+      if (currentRequestId !== requestId.current) return;
+      setProducts((current) => [...current, ...result.rows]);
+      setHasMore((page + 1) * productPageSize < result.total);
+    } catch (loadError) {
+      if (currentRequestId === requestId.current) setError(friendlyErrorMessage(loadError));
+    } finally {
+      loadingMoreRef.current = false;
+      setLoadingMore(false);
+    }
+  }, [businessId, debouncedSearch, filter.categoryId, filter.lowStock, hasMore, loading, products.length]);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(search.trim()), 300);
@@ -181,6 +219,9 @@ export default function Stock() {
           contentContainerStyle={styles.list}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void loadProducts(true)} tintColor={colors.primary} />}
           renderItem={({ item }) => <ProductRow item={item} onPress={() => router.push({ pathname: '/products/[id]', params: { id: item.id } })} />}
+          onEndReached={() => void loadMoreProducts()}
+          onEndReachedThreshold={0.5}
+          ListFooterComponent={loadingMore ? <View style={styles.loadMore}><Skeleton height={64} radius={16} /></View> : undefined}
         />
       )}
 
@@ -268,6 +309,7 @@ const styles = StyleSheet.create({
   productList: { flex: 1 },
   state: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: Spacing.five },
   emptyRefresh: { flexGrow: 1 },
+  loadMore: { paddingHorizontal: Spacing.five, paddingBottom: Spacing.two },
   error: { color: colors.danger, textAlign: 'center', lineHeight: 22 },
   retry: { minHeight: 48, justifyContent: 'center', paddingHorizontal: 18 },
   retryText: { color: colors.primaryDark, fontWeight: '800' },

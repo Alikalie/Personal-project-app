@@ -1,3 +1,4 @@
+import { safeLogger } from '@/lib/safeLogger';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -106,7 +107,7 @@ export default function AdjustProductStock() {
       const currentQuantity = await adjustStock(businessId, product.id, movementType, parsedQuantity, reasonWithNote);
       setNewQuantity(currentQuantity);
     } catch (saveError) {
-      console.warn('Stock adjustment failed:', saveError);
+      safeLogger.warn('Stock adjustment failed:', saveError);
       setError(friendlyErrorMessage(saveError));
     } finally {
       submitLock.current = false;

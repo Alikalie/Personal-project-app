@@ -1,3 +1,4 @@
+import { safeLogger } from '@/lib/safeLogger';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { supabase } from '@/lib/supabase';
@@ -65,7 +66,7 @@ export async function getPublishedLegalDocument(type: LegalDocumentType): Promis
     .maybeSingle();
 
   if (error) {
-    console.warn(`Published ${type} document query failed:`, error);
+    safeLogger.warn(`Published ${type} document query failed:`, error);
     const cached = await AsyncStorage.getItem(publishedCacheKey(type));
     if (!cached) throw error;
     const document = mapDocument(JSON.parse(cached));
