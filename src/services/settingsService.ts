@@ -1,5 +1,6 @@
 import { decode } from 'base64-arraybuffer';
 import { File } from 'expo-file-system';
+import * as LegacyFileSystem from 'expo-file-system/legacy';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import type { ImagePickerAsset } from 'expo-image-picker';
 
@@ -94,6 +95,38 @@ export async function getLogoUrl(path: string | null): Promise<string | null> {
     return data.signedUrl;
   } catch (error) {
     throw settingError(error);
+  }
+}
+
+export async function getLogoDataUri(path: string | null): Promise<string | null> {
+  if (!path) return null;
+  let downloadedUri: string | null = null;
+  try {
+    const url = await getLogoUrl(path);
+    if (!url) return null;
+    if (!LegacyFileSystem.cacheDirectory) throw new Error('The app cache is not available.');
+    const extension = path.split('.').pop()?.toLowerCase();
+    const mimeType = extension === 'png' ? 'image/png' : extension === 'webp' ? 'image/webp' : 'image/jpeg';
+    const result = await LegacyFileSystem.downloadAsync(
+      url,
+      `${LegacyFileSystem.cacheDirectory}mishop-receipt-preview-${Date.now()}`,
+    );
+    downloadedUri = result.uri;
+    const base64 = await LegacyFileSystem.readAsStringAsync(result.uri, {
+      encoding: LegacyFileSystem.EncodingType.Base64,
+    });
+    if (!base64) throw new Error('The business logo could not be read.');
+    return `data:${mimeType};base64,${base64}`;
+  } catch (error) {
+    throw settingError(error);
+  } finally {
+    if (downloadedUri) {
+      try {
+        await LegacyFileSystem.deleteAsync(downloadedUri, { idempotent: true });
+      } catch (error) {
+        console.warn('Temporary receipt preview logo could not be removed:', error);
+      }
+    }
   }
 }
 

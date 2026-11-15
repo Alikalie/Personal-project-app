@@ -16,3 +16,19 @@ export function canManageBilling(role: string | null | undefined): boolean {
 export function isPlatformAdmin(level: string | null | undefined): level is PlatformAdminLevel {
   return level === 'super_admin' || level === 'support';
 }
+
+export function canManageAdmins(level: string | null | undefined): boolean {
+  return level === 'super_admin';
+}
+
+export function canWriteSupportData(level: string | null | undefined, writeSession: boolean): boolean {
+  return level === 'super_admin' && writeSession;
+}
+
+export function canExportEmails(level: string | null | undefined): boolean {
+  return level === 'super_admin';
+}
+
+export function canPublishLegal(level: string | null | undefined): boolean {
+  return level === 'super_admin';
+}

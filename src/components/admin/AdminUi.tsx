@@ -90,7 +90,7 @@ export function AdminScreen({
         {supportAccess ? (
           <View style={styles.supportBanner}>
             <Text style={styles.supportText}>
-              Support access: {supportAccess.businessName}, expires in {timer}
+              Support access: {supportAccess.businessCode ? `${supportAccess.businessCode} · ` : ''}{supportAccess.businessName}, expires in {timer}
             </Text>
             <Pressable onPress={() => void endSupport()} disabled={endingSupportAccess} style={styles.supportEnd} accessibilityRole="button">
               <Text style={styles.supportEndText}>{endingSupportAccess ? 'Ending…' : 'End now'}</Text>

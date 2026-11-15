@@ -187,6 +187,7 @@ export default function CustomerProfile() {
           name: ctx?.business?.name ?? null,
           address: ctx?.business?.address ?? null,
           phone: ctx?.business?.phone ?? null,
+          currency_code: ctx?.business?.currencyCode ?? 'SLE',
           receipt_header: ctx?.business?.receiptHeader ?? null,
           receipt_footer: ctx?.business?.receiptFooter ?? null,
           show_logo_on_receipt: ctx?.business?.showLogoOnReceipt ?? false,

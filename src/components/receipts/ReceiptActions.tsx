@@ -3,86 +3,13 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import ViewShot, { type ViewShotRef } from 'react-native-view-shot';
 
 import { Button } from '@/components/ui';
+import { ReceiptHtmlPreview } from '@/components/receipts/ReceiptHtmlPreview';
 import { colors, radius, Spacing, typography } from '@/constants/theme';
-import { formatSLE } from '@/lib/money';
 import { createReceiptPdf, downloadReceipt, isReceiptPdfAvailable, printReceipt, receiptFriendlyError, shareReceipt, shareReceiptImage } from '@/lib/receipt/receiptFile';
 import { saveReceiptData } from '@/lib/receipt/receiptStore';
 import type { ReceiptData, ReceiptLayout } from '@/lib/receipt/types';
 
 type Action = 'generate' | 'share' | 'download' | 'image' | 'print' | 'whatsapp' | null;
-
-function paymentLabel(method: string): string {
-  if (method === 'orange_money') return 'Orange Money';
-  if (method === 'afrimoney') return 'Afrimoney';
-  if (method === 'cash') return 'Cash';
-  if (method === 'other') return 'Other';
-  return method.replace(/_/g, ' ');
-}
-
-function ReceiptPreview({ data }: { data: ReceiptData }) {
-  return (
-    <View style={styles.preview}>
-      <Text style={styles.previewBusiness}>{data.business.name}</Text>
-      {data.business.address ? <Text style={styles.previewSecondary}>{data.business.address}</Text> : null}
-      {data.business.phone ? <Text style={styles.previewSecondary}>{data.business.phone}</Text> : null}
-      {data.business.header ? <Text style={styles.previewSecondary}>{data.business.header}</Text> : null}
-      <View style={styles.previewDivider} />
-      <Text style={styles.previewTitle}>{data.kind === 'sale' ? 'Sale receipt' : 'Payment receipt'}</Text>
-      <Text style={styles.previewSecondary}>Receipt {data.receiptNo}</Text>
-      <Text style={styles.previewSecondary}>
-        {new Intl.DateTimeFormat('en-SL', {
-          timeZone: 'Africa/Freetown',
-          dateStyle: 'medium',
-          timeStyle: 'short',
-        }).format(new Date(data.issuedAt))}
-      </Text>
-      {data.kind === 'sale' ? (
-        <>
-          {data.customerName ? <Text style={styles.previewSecondary}>Customer: {data.customerName}</Text> : null}
-          <View style={styles.previewDivider} />
-          {data.items.map((item, index) => (
-            <View key={`${item.name}-${index}`} style={styles.previewRow}>
-              <Text style={styles.previewLabel}>{item.name} × {item.quantity}</Text>
-              <Text style={styles.previewValue}>{formatSLE(item.lineTotalMinor)}</Text>
-            </View>
-          ))}
-          <View style={styles.previewDivider} />
-          <PreviewRow label="Subtotal" value={formatSLE(data.subtotalMinor)} />
-          {data.discountMinor > 0 ? <PreviewRow label="Discount" value={`-${formatSLE(data.discountMinor)}`} /> : null}
-          <PreviewRow label="Total" value={formatSLE(data.totalMinor)} strong />
-          {data.payments.map((payment, index) => (
-            <PreviewRow key={`${payment.method}-${index}`} label={paymentLabel(payment.method)} value={formatSLE(payment.amountMinor)} />
-          ))}
-          {data.balanceOwedMinor > 0 ? <PreviewRow label="Balance owed" value={formatSLE(data.balanceOwedMinor)} strong /> : null}
-          {data.changeMinor > 0 ? <PreviewRow label="Change given" value={formatSLE(data.changeMinor)} /> : null}
-        </>
-      ) : (
-        <>
-          <Text style={styles.previewSecondary}>Customer: {data.customerName}</Text>
-          <View style={styles.previewDivider} />
-          <PreviewRow label="Method" value={paymentLabel(data.method)} />
-          <PreviewRow label="Amount paid" value={formatSLE(data.paymentMinor)} strong />
-          <PreviewRow label="Previous balance" value={formatSLE(data.previousBalanceMinor)} />
-          <PreviewRow label="New balance" value={formatSLE(data.newBalanceMinor)} strong />
-          {data.note ? <Text style={styles.previewSecondary}>Note: {data.note}</Text> : null}
-        </>
-      )}
-      <View style={styles.previewDivider} />
-      <Text style={styles.previewSecondary}>Cashier: {data.cashierName}</Text>
-      <Text style={styles.previewFooter}>{data.business.footer || 'Thank you for your business.'}</Text>
-      <Text style={styles.previewBrand}>Made with MiShop</Text>
-    </View>
-  );
-}
-
-function PreviewRow({ label, value, strong = false }: { label: string; value: string; strong?: boolean }) {
-  return (
-    <View style={styles.previewRow}>
-      <Text style={[styles.previewLabel, strong && styles.previewStrong]}>{label}</Text>
-      <Text style={[styles.previewValue, strong && styles.previewStrong]}>{value}</Text>
-    </View>
-  );
-}
 
 export function ReceiptActions({
   data,
@@ -187,7 +114,7 @@ export function ReceiptActions({
         ))}
       </View>
       <ViewShot ref={viewShot} options={{ format: 'png', quality: 1, result: 'tmpfile' }}>
-        <ReceiptPreview data={data} />
+        <ReceiptHtmlPreview data={data} layout={layout} />
       </ViewShot>
       {error ? <Text style={styles.error}>{error}</Text> : null}
       {error && __DEV__ && technicalError ? (
@@ -263,17 +190,6 @@ const styles = StyleSheet.create({
   layoutSelected: { borderColor: colors.primary, backgroundColor: colors.primaryLight },
   layoutText: { color: colors.textSecondary, ...typography.label },
   layoutTextSelected: { color: colors.primaryDark },
-  preview: { padding: Spacing.four, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.white, gap: 5 },
-  previewBusiness: { color: colors.text, ...typography.heading, textAlign: 'center' },
-  previewTitle: { color: colors.primaryDark, ...typography.label, marginTop: 4 },
-  previewSecondary: { color: colors.textSecondary, ...typography.caption, textAlign: 'center' },
-  previewBrand: { color: colors.primaryDark, ...typography.caption, fontWeight: '700', textAlign: 'center' },
-  previewDivider: { borderBottomWidth: 1, borderStyle: 'dashed', borderColor: colors.border, marginVertical: 5 },
-  previewRow: { minHeight: 30, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: Spacing.two },
-  previewLabel: { color: colors.textSecondary, ...typography.caption, flex: 1 },
-  previewValue: { color: colors.text, ...typography.caption, fontWeight: '700', textAlign: 'right' },
-  previewStrong: { color: colors.primaryDark, fontWeight: '800' },
-  previewFooter: { color: colors.textSecondary, ...typography.caption, textAlign: 'center', marginTop: Spacing.two },
   error: { color: colors.danger, ...typography.caption },
   technicalToggle: { color: colors.textSecondary, ...typography.caption, textDecorationLine: 'underline' },
   technical: { color: colors.textSecondary, ...typography.caption },

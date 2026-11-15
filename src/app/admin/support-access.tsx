@@ -59,6 +59,7 @@ export default function SupportAccessScreen() {
     try {
       const session = await startSupportAccess({
         businessId: selected.business_id,
+        businessCode: selected.business_code,
         businessName: selected.name,
         reason,
         minutes,

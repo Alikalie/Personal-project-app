@@ -21,7 +21,7 @@ export default function Splash() {
   const progress = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    Animated.parallel([
+    const animation = Animated.parallel([
       Animated.parallel([
         Animated.timing(logoOpacity, { toValue: 1, duration: 650, useNativeDriver: true }),
         Animated.spring(logoScale, { toValue: 1, friction: 6, tension: 60, useNativeDriver: true }),
@@ -36,10 +36,14 @@ export default function Splash() {
       Animated.sequence([Animated.delay(800), Animated.timing(tagOpacity, { toValue: 1, duration: 500, useNativeDriver: true })]),
       Animated.sequence([Animated.delay(900), Animated.timing(footerOpacity, { toValue: 1, duration: 500, useNativeDriver: true })]),
       Animated.timing(progress, { toValue: 1, duration: 2300, easing: Easing.out(Easing.cubic), useNativeDriver: false }),
-    ]).start();
+    ]);
+    animation.start();
     const t = setTimeout(() => setAnimDone(true), 1600);
-    return () => clearTimeout(t);
-  }, []);
+    return () => {
+      clearTimeout(t);
+      animation.stop();
+    };
+  }, [footerOpacity, logoOpacity, logoScale, nameOpacity, nameY, progress, tagOpacity]);
 
   useEffect(() => {
     if (animDone && !loading && !error) router.replace(routeFor(ctx));
@@ -100,7 +104,6 @@ const s = StyleSheet.create({
   center: { alignItems: 'center', paddingHorizontal: 32 },
   logo: { width: 290, height: 193 },
   name: { marginTop: 4, fontSize: 34, fontWeight: '800', color: colors.primaryDark, letterSpacing: -0.4 },
-  nameAccent: { color: colors.primary },
   tagline: { marginTop: 8, fontSize: 18, color: colors.textSecondary, letterSpacing: 0.2, textAlign: 'center' },
   footer: { position: 'absolute', bottom: 32, alignItems: 'center', width: '100%' },
   track: { width: 132, height: 4, borderRadius: 2, backgroundColor: colors.primaryLight, overflow: 'hidden' },

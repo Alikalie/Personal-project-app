@@ -7,6 +7,7 @@ import { supabase } from '@/lib/supabase';
 export type SupportAccessSession = {
   id: string;
   businessId: string;
+  businessCode?: string;
   businessName: string;
   expiresAt: number;
   write: boolean;
@@ -32,6 +33,7 @@ export type SupportDataRow = Record<string, unknown> & { id: string };
 export const supportEditableFields = {
   products: ['category_id', 'name', 'sku', 'barcode', 'cost_price_minor', 'selling_price_minor', 'low_stock_threshold'],
   customers: ['name', 'phone', 'address', 'notes'],
+  expenses: ['amount_minor', 'category_id', 'description', 'payment_method', 'expense_date'],
   categories: ['name'],
   expense_categories: ['name'],
 } as const;
@@ -53,6 +55,7 @@ function report(operation: string, error: unknown): Error {
 
 export async function startSupportAccess(input: {
   businessId: string;
+  businessCode?: string;
   businessName: string;
   reason: string;
   minutes: number;
@@ -72,6 +75,7 @@ export async function startSupportAccess(input: {
   const session: SupportAccessSession = {
     id,
     businessId: input.businessId,
+    businessCode: input.businessCode,
     businessName: input.businessName,
     expiresAt: Date.now() + input.minutes * 60_000,
     write: input.write,
@@ -90,6 +94,7 @@ export async function getSavedSupportAccess(): Promise<SupportAccessSession | nu
     if (
       typeof row.id !== 'string'
       || typeof row.businessId !== 'string'
+      || (row.businessCode !== undefined && typeof row.businessCode !== 'string')
       || typeof row.businessName !== 'string'
       || typeof row.expiresAt !== 'number'
       || typeof row.write !== 'boolean'
@@ -97,6 +102,7 @@ export async function getSavedSupportAccess(): Promise<SupportAccessSession | nu
     return {
       id: row.id,
       businessId: row.businessId,
+      businessCode: typeof row.businessCode === 'string' ? row.businessCode : undefined,
       businessName: row.businessName,
       expiresAt: row.expiresAt,
       write: row.write,
@@ -169,6 +175,23 @@ function sanitizeEditableValues(table: EditableTable, input: Record<string, unkn
         throw new Error(`Enter a valid ${field.replace(/_/g, ' ')}.`);
       }
     }
+  } else if (table === 'expenses') {
+    if ('amount_minor' in values && (!Number.isSafeInteger(values.amount_minor) || Number(values.amount_minor) <= 0)) {
+      throw new Error('Enter a valid expense amount in minor units.');
+    }
+    if ('category_id' in values && typeof values.category_id !== 'string') {
+      throw new Error('Choose a valid expense category.');
+    }
+    if ('payment_method' in values && !['cash', 'orange_money', 'afrimoney', 'other'].includes(String(values.payment_method))) {
+      throw new Error('Choose a valid expense payment method.');
+    }
+    if ('expense_date' in values && (
+      typeof values.expense_date !== 'string'
+      || !/^\d{4}-\d{2}-\d{2}$/.test(values.expense_date)
+      || Number.isNaN(Date.parse(`${values.expense_date}T00:00:00Z`))
+    )) {
+      throw new Error('Enter a valid expense date as YYYY-MM-DD.');
+    }
   }
   return values;
 }
@@ -215,6 +238,10 @@ export async function createSupportBusinessRecord(input: {
     for (const required of ['name', 'cost_price_minor', 'selling_price_minor', 'low_stock_threshold']) {
       if (!(required in values)) throw new Error(`Enter ${required.replace(/_/g, ' ')}.`);
     }
+  } else if (table === 'expenses') {
+    for (const required of ['amount_minor', 'category_id', 'payment_method', 'expense_date']) {
+      if (!(required in values)) throw new Error(`Enter ${required.replace(/_/g, ' ')}.`);
+    }
   } else if (!('name' in values)) {
     throw new Error('Enter a name.');
   }
@@ -223,6 +250,12 @@ export async function createSupportBusinessRecord(input: {
       .eq('id', values.category_id).eq('business_id', input.businessId).is('deleted_at', null).maybeSingle();
     if (error) throw report('Checking support product category', error);
     if (!data) throw new Error('Choose a category from this business.');
+  }
+  if (table === 'expenses' && typeof values.category_id === 'string') {
+    const { data, error } = await supabase.from('expense_categories').select('id')
+      .eq('id', values.category_id).eq('business_id', input.businessId).maybeSingle();
+    if (error) throw report('Checking support expense category', error);
+    if (!data) throw new Error('Choose an expense category from this business.');
   }
   Object.assign(values, { id: newId(), business_id: input.businessId });
   const { error } = await supabase.from(input.table).insert(values);
@@ -246,6 +279,12 @@ export async function updateSupportBusinessRecord(input: {
     if (error) throw report('Checking support product category', error);
     if (!data) throw new Error('Choose a category from this business.');
   }
+  if (table === 'expenses' && typeof values.category_id === 'string') {
+    const { data, error } = await supabase.from('expense_categories').select('id')
+      .eq('id', values.category_id).eq('business_id', input.businessId).maybeSingle();
+    if (error) throw report('Checking support expense category', error);
+    if (!data) throw new Error('Choose an expense category from this business.');
+  }
   const { error } = await supabase.from(input.table)
     .update(values)
     .eq('id', input.id)
@@ -260,7 +299,7 @@ export async function deleteSupportBusinessRecord(input: {
   id: string;
 }): Promise<void> {
   await assertSupportAccess(input.sessionId, input.businessId, true);
-  if (!softDeletableTables.includes(input.table)) throw new Error('This record cannot be deleted in support access.');
+  if (!isSupportEditableTable(input.table)) throw new Error('This record cannot be deleted in support access.');
   if (input.table === 'categories') {
     const { count, error: countError } = await supabase.from('products')
       .select('id', { count: 'exact', head: true })
@@ -270,9 +309,37 @@ export async function deleteSupportBusinessRecord(input: {
     if (countError) throw report('Checking support category usage', countError);
     if ((count ?? 0) > 0) throw new Error('Move the category’s products before removing it.');
   }
-  const { error } = await supabase.from(input.table)
-    .update({ deleted_at: new Date().toISOString() })
-    .eq('id', input.id)
-    .eq('business_id', input.businessId);
+  const query = softDeletableTables.includes(input.table)
+    ? supabase.from(input.table).update({ deleted_at: new Date().toISOString() })
+    : supabase.from(input.table).delete();
+  const { error } = await query.eq('id', input.id).eq('business_id', input.businessId);
   if (error) throw report(`Deleting support ${input.table} record`, error);
+}
+
+export async function adjustSupportProductStock(input: {
+  sessionId: string;
+  businessId: string;
+  productId: string;
+  type: 'stock_in' | 'stock_out';
+  quantity: number;
+  reason: string;
+}): Promise<number> {
+  await assertSupportAccess(input.sessionId, input.businessId, true);
+  if (!Number.isSafeInteger(input.quantity) || input.quantity <= 0) {
+    throw new Error('Enter a positive whole-number quantity.');
+  }
+  if (!input.reason.trim()) throw new Error('Enter a reason for the stock change.');
+  const { data, error } = await supabase.rpc('adjust_stock', {
+    p_business_id: input.businessId,
+    p_product_id: input.productId,
+    p_type: input.type,
+    p_quantity: input.quantity,
+    p_reason: input.reason.trim(),
+  });
+  if (error) throw report('Adjusting support product stock', error);
+  const quantityAfter = typeof data === 'number' ? data : Number(data);
+  if (!Number.isSafeInteger(quantityAfter) || quantityAfter < 0) {
+    throw new Error('The server returned an invalid stock quantity.');
+  }
+  return quantityAfter;
 }

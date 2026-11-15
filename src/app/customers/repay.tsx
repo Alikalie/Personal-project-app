@@ -182,6 +182,7 @@ export default function RepayCustomer() {
           name: business?.name ?? null,
           address: business?.address ?? null,
           phone: business?.phone ?? null,
+          currency_code: business?.currencyCode ?? 'SLE',
           receipt_header: business?.receiptHeader ?? null,
           receipt_footer: business?.receiptFooter ?? null,
           show_logo_on_receipt: business?.showLogoOnReceipt ?? false,
@@ -239,9 +240,9 @@ export default function RepayCustomer() {
           <ScrollView contentContainerStyle={styles.scroll}>
             <Text style={styles.successTitle}>Payment recorded</Text>
             <Text style={styles.successValue}>{formatSLE(paidMinor)}</Text>
-            <Text style={styles.successInfo}>New balance: {formatSLE(receipt.kind === 'repayment' ? receipt.newBalanceMinor : 0)}</Text>
+            <Text style={styles.successInfo}>New balance: {formatSLE(receipt.customerBalanceAfterMinor ?? 0)}</Text>
             {refreshWarning ? <Text style={styles.warning}>{refreshWarning}</Text> : null}
-            <ReceiptActions data={receipt} cacheKey={`repayment/${receipt.kind === 'repayment' ? receipt.entryId : ''}`} autoGenerate />
+            <ReceiptActions data={receipt} cacheKey={`repayment/${receipt.receiptNo}`} autoGenerate />
             <Button label="Done" variant="outline" onPress={() => router.back()} />
           </ScrollView>
         </View>

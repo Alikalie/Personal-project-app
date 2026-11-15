@@ -37,14 +37,7 @@ export function ReceiptHtmlPreview({
         scrollEnabled={false}
         javaScriptEnabled
         onMessage={onMessage}
-        injectedJavaScript="window.ReactNativeWebView.postMessage(String(document.documentElement.scrollHeight)); true;"
-        onLoadEnd={(event) => {
-          if (event.nativeEvent.url === 'about:blank') return;
-          // Re-measure after images and fonts settle.
-          setTimeout(() => {
-            // The injected script reports the initial height; later changes are handled by layout.
-          }, 0);
-        }}
+        injectedJavaScript="(function(){var report=function(){window.ReactNativeWebView.postMessage(String(document.documentElement.scrollHeight));};report();window.addEventListener('load',report);new ResizeObserver(report).observe(document.body);})();true;"
         accessibilityLabel="Receipt preview"
       />
     </View>

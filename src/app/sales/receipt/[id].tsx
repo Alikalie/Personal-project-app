@@ -30,7 +30,7 @@ export default function SaleReceiptScreen() {
     let cachedReceipt: ReceiptData | null = null;
     try {
       const cached = await loadReceiptData(`sale/${id}`);
-      if (cached?.kind === 'sale') {
+      if (cached?.type === 'sale') {
         cachedReceipt = cached;
         setData(cachedReceipt);
         setLoading(false);
