@@ -8,6 +8,7 @@ import { useAuth } from '@/components/AuthProvider';
 import { LegalLinks } from '@/components/LegalLinks';
 import { colors } from '@/constants/theme';
 import { friendlyErrorMessage } from '@/lib/errors';
+import { passwordPolicyError } from '@/lib/passwordPolicy';
 import { onboarding } from '@/services/onboardingStore';
 
 const validEmail = /^\S+@\S+\.\S+$/;
@@ -34,7 +35,8 @@ export default function SignUp() {
     if (trimmedName.length < 2) nextErrors.name = 'Enter your full name (at least 2 characters).';
     if (phone.replace(/\D/g, '').length < 8) nextErrors.phone = 'Enter a phone number with at least 8 digits.';
     if (!validEmail.test(normalizedEmail)) nextErrors.email = 'Enter a valid email address.';
-    if (password.length < 6) nextErrors.password = 'Use a password with at least 6 characters.';
+    const passwordError = passwordPolicyError(password);
+    if (passwordError) nextErrors.password = passwordError;
     if (!acceptedLegal) nextErrors.legal = 'Agree to the Terms and Conditions and Privacy Policy to continue.';
     setErrors(nextErrors);
     setRequestError('');
@@ -131,7 +133,10 @@ export default function SignUp() {
       <Field label="Full name" icon={User} value={name} onChangeText={setName} placeholder="Your full name" error={errors.name} />
       <Field label="Phone number" icon={Phone} value={phone} onChangeText={setPhone} placeholder="+232 76 000000" keyboardType="phone-pad" error={errors.phone} />
       <Field label="Email" icon={Mail} value={email} onChangeText={setEmail} placeholder="you@example.com" keyboardType="email-address" autoCapitalize="none" error={errors.email} />
-      <Field label="Password" icon={Lock} value={password} onChangeText={setPassword} placeholder="At least 6 characters" secure error={errors.password} />
+      <Field label="Password" icon={Lock} value={password} onChangeText={setPassword} placeholder="8+ characters and a symbol" secure error={errors.password} />
+      <Text style={{ color: colors.textSecondary, fontSize: 12, marginTop: -12, marginBottom: 8 }}>
+        Use at least 8 characters and include a special character or symbol (for example, ! or #).
+      </Text>
       <View style={{ minHeight: 52, flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 8 }}>
         <Pressable
           onPress={() => setAcceptedLegal((value) => !value)}

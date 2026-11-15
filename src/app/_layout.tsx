@@ -12,6 +12,7 @@ import { PublicAppSettingsProvider } from '../components/PublicAppSettingsProvid
 import { LegalAcceptanceGate } from '../components/LegalAcceptanceGate';
 import { AppReleaseGate } from '../components/AppReleaseGate';
 import { SecurityGuard } from '../components/SecurityGuard';
+import { BusinessProfileGate } from '../components/BusinessProfileGate';
 
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
@@ -25,15 +26,17 @@ export default function RootLayout() {
     <PublicAppSettingsProvider>
       <PreferencesProvider>
         <AuthProvider>
-          <SecurityGuard>
-            <CartProvider>
-              <AppReleaseGate>
-                <LegalAcceptanceGate>
-                  <Stack screenOptions={{ headerShown: false }} />
-                </LegalAcceptanceGate>
-              </AppReleaseGate>
-            </CartProvider>
-          </SecurityGuard>
+          <BusinessProfileGate>
+            <SecurityGuard>
+              <CartProvider>
+                <AppReleaseGate>
+                  <LegalAcceptanceGate>
+                    <Stack screenOptions={{ headerShown: false }} />
+                  </LegalAcceptanceGate>
+                </AppReleaseGate>
+              </CartProvider>
+            </SecurityGuard>
+          </BusinessProfileGate>
         </AuthProvider>
       </PreferencesProvider>
     </PublicAppSettingsProvider>

@@ -163,6 +163,19 @@ function mapRows<T>(value: unknown, mapper: (row: unknown) => T): T[] {
   return Array.isArray(value) ? value.map(mapper) : [];
 }
 
+function safeAdminErrorMessage(error: unknown): string | null {
+  const message = objectOf(error).message;
+  if (typeof message !== 'string' || !message.trim()) return null;
+  return message
+    .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, '[email]')
+    .replace(/\b[0-9a-f]{8}-[0-9a-f-]{27,}\b/gi, '[id]')
+    .replace(/\bBearer\s+\S+/gi, 'Bearer [redacted]')
+    .replace(/\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/g, '[token]')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 240);
+}
+
 async function rpc<T>(
   name: string,
   args: Record<string, unknown> = {},
@@ -173,10 +186,14 @@ async function rpc<T>(
     if (error) throw error;
     return data as T;
   } catch (error) {
-    console.warn(`${name} RPC failed:`, error);
     const details = typeof error === 'object' && error !== null
       ? error as { code?: unknown; message?: unknown }
       : {};
+    const errorCode = typeof details.code === 'string' ? details.code : 'unknown';
+    const databaseMessage = safeAdminErrorMessage(error);
+    if (__DEV__) {
+      console.warn(`${name} RPC failed (${errorCode}): ${databaseMessage ?? 'Unknown database error.'}`);
+    }
     if (
       missingFunctionFallback !== undefined
       && details.code === 'PGRST202'
@@ -184,6 +201,20 @@ async function rpc<T>(
       && details.message.includes(name)
     ) {
       return missingFunctionFallback;
+    }
+    if (errorCode === 'PGRST202' || errorCode === 'PGRST203') {
+      throw new Error(errorCode === 'PGRST202'
+        ? 'The admin service is not available. Refresh the app, and contact support if this keeps happening.'
+        : 'The admin service configuration is ambiguous. Please contact support.');
+    }
+    if (errorCode === '42501' || /permission denied|not authorized|unauthorized|aal2|two.?step|mfa/i.test(databaseMessage ?? '')) {
+      throw new Error('Your admin session is not authorized for this request. Verify your admin access and two-step sign-in, then try again.');
+    }
+    if (errorCode === 'PGRST204' || /column .* does not exist|could not find the .* column/i.test(databaseMessage ?? '')) {
+      throw new Error('The admin service and database are out of sync. Please contact support.');
+    }
+    if (databaseMessage) {
+      throw new Error(databaseMessage);
     }
     throw new Error(friendlyErrorMessage(error, 'admin'));
   }
@@ -295,7 +326,7 @@ export async function setAdminUserSuspended(userId: string, suspended: boolean, 
     p_suspended: suspended,
     p_reason: reason.trim(),
   });
-  await refreshAdminOverview();
+  overviewCache = null;
 }
 
 export async function setAdminBusinessSuspended(businessId: string, suspended: boolean, reason: string): Promise<void> {
@@ -304,17 +335,17 @@ export async function setAdminBusinessSuspended(businessId: string, suspended: b
     p_suspended: suspended,
     p_reason: reason.trim(),
   });
-  await refreshAdminOverview();
+  overviewCache = null;
 }
 
 export async function grantPlatformAdmin(userId: string, level: 'super_admin' | 'support'): Promise<void> {
   await rpc<unknown>('admin_grant_admin', { p_user_id: userId, p_level: level });
-  await refreshAdminOverview();
+  overviewCache = null;
 }
 
 export async function revokePlatformAdmin(userId: string): Promise<void> {
   await rpc<unknown>('admin_revoke_admin', { p_user_id: userId });
-  await refreshAdminOverview();
+  overviewCache = null;
 }
 
 export async function updateAdminProfile(userId: string, fullName: string, phone: string): Promise<void> {
@@ -323,7 +354,7 @@ export async function updateAdminProfile(userId: string, fullName: string, phone
     p_full_name: fullName.trim(),
     p_phone: phone.trim(),
   });
-  await refreshAdminOverview();
+  overviewCache = null;
 }
 
 export async function updateAdminBusiness(businessId: string, input: {
@@ -341,7 +372,7 @@ export async function updateAdminBusiness(businessId: string, input: {
     p_district: input.district.trim(),
     p_phone: input.phone.trim(),
   });
-  await refreshAdminOverview();
+  overviewCache = null;
 }
 
 export async function deleteAdminBusiness(businessId: string, confirmCode: string): Promise<void> {
@@ -350,7 +381,7 @@ export async function deleteAdminBusiness(businessId: string, confirmCode: strin
     p_business_id: businessId,
     p_confirm_code: confirmCode.trim(),
   });
-  await refreshAdminOverview();
+  overviewCache = null;
 }
 
 export async function listPlatformAdmins(): Promise<AdminTeamMember[]> {

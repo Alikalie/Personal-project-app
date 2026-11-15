@@ -53,8 +53,20 @@ export function friendlyErrorMessage(error: unknown, context?: 'sale' | 'repayme
     return 'Could not change this payment. Please try again.';
   }
   if (context === 'admin') {
-    if (/not allowed|42501|permission denied|not authorized|unauthorized/.test(normalized)) {
-      return 'You do not have permission to use this admin action.';
+    if (/^the admin service is not available|^the admin service configuration is ambiguous|^your admin session is not authorized|^the admin service and database are out of sync/i.test(message)) {
+      return message;
+    }
+    if (/pgrst202|could not find the function|function .* does not exist|schema cache/.test(normalized)) {
+      return 'The admin service is not available. Refresh the app, and contact support if this keeps happening.';
+    }
+    if (/pgrst203|multiple functions|ambiguous function/.test(normalized)) {
+      return 'The admin service configuration is ambiguous. Please contact support.';
+    }
+    if (/42501|permission denied|not allowed|not authorized|unauthorized|aal2|two.?step|mfa/.test(normalized)) {
+      return 'Your admin session is not authorized for this request. Verify your admin access and two-step sign-in, then try again.';
+    }
+    if (/column .* does not exist|pgrst204|could not find the .* column/.test(normalized)) {
+      return 'The admin service and database are out of sync. Please contact support.';
     }
     if (/network|fetch|internet|connection/.test(normalized) || error instanceof TypeError) {
       return 'No internet connection. Check your connection and try again.';
@@ -96,8 +108,8 @@ export function friendlyErrorMessage(error: unknown, context?: 'sale' | 'repayme
   if (/already registered|already exists|email_exists/.test(normalized)) {
     return 'An account with this email already exists. Log in or use a different email.';
   }
-  if (/weak_password|password.*(weak|6 characters|too short)/.test(normalized)) {
-    return 'Choose a stronger password with at least 6 characters.';
+  if (/weak_password|password.*(weak|6 characters|8 characters|too short|symbol|special character)/.test(normalized)) {
+    return 'Choose a password with at least 8 characters and at least one special character or symbol.';
   }
   if (/rate.?limit|too many|over_email_send_rate_limit/.test(normalized) || status === 429) {
     return 'Too many attempts. Please wait a little while and try again.';

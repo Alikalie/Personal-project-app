@@ -9,17 +9,8 @@ import { useAuth } from '@/components/AuthProvider';
 import { colors, typography } from '@/constants/theme';
 import { canEditBusiness } from '@/lib/permissions';
 import { friendlyErrorMessage } from '@/lib/errors';
+import { supportedCurrencies } from '@/lib/currencies';
 import { updateBusiness } from '@/services/settingsService';
-
-const supportedCurrencies = [
-  { code: 'SLE', name: 'Sierra Leonean Leone' },
-  { code: 'USD', name: 'US Dollar' },
-  { code: 'EUR', name: 'Euro' },
-  { code: 'GBP', name: 'British Pound' },
-  { code: 'LRD', name: 'Liberian Dollar' },
-  { code: 'GHS', name: 'Ghanaian Cedi' },
-  { code: 'NGN', name: 'Nigerian Naira' },
-];
 
 export default function CurrencySettings() {
   const { ctx, refresh } = useAuth();

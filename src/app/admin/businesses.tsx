@@ -102,7 +102,7 @@ export default function AdminBusinesses() {
   );
 
   return (
-    <AdminScreen title="Businesses" subtitle="Details and activity counts only">
+    <AdminScreen title="Businesses" subtitle="Business profiles, activity and status">
       <View style={styles.controls}>
         <AdminSearch value={search} onChangeText={setSearch} placeholder="Search name, owner or business code" />
         <AdminFilterChips

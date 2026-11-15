@@ -5,6 +5,7 @@ export const onboarding = {
   address: '',
   phone: '',
   district: '',
+  currencyCode: 'SLE',
 };
 
 export function clearOnboarding() {
@@ -15,5 +16,6 @@ export function clearOnboarding() {
     address: '',
     phone: '',
     district: '',
+    currencyCode: 'SLE',
   });
 }

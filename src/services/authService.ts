@@ -4,6 +4,7 @@ import Constants from 'expo-constants';
 
 import type { AuthUser } from '../components/AuthProvider';
 import { friendlyErrorMessage } from '../lib/errors';
+import { passwordPolicyError } from '../lib/passwordPolicy';
 import { supabase } from '../lib/supabase';
 import { acceptSignupConsentIfPending, rememberSignupConsent } from '@/services/legalService';
 
@@ -56,6 +57,8 @@ export async function signUpWithPassword(
   password: string,
   marketingConsent = false,
 ): Promise<boolean> {
+  const passwordError = passwordPolicyError(password);
+  if (passwordError) throw new Error(passwordError);
   const { data, error } = await supabase.auth.signUp({
     email: user.email,
     password,

@@ -5,6 +5,7 @@ import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import type { ImagePickerAsset } from 'expo-image-picker';
 
 import { friendlyErrorMessage } from '@/lib/errors';
+import { passwordPolicyError } from '@/lib/passwordPolicy';
 import { supabase } from '@/lib/supabase';
 
 export type ProfileUpdate = { full_name: string; phone: string };
@@ -130,9 +131,25 @@ export async function getLogoDataUri(path: string | null): Promise<string | null
   }
 }
 
-export async function updatePassword(password: string): Promise<void> {
+export async function updatePassword(currentPassword: string, newPassword: string): Promise<void> {
+  const passwordError = passwordPolicyError(newPassword);
+  if (passwordError) throw new Error(passwordError);
   try {
-    const { error } = await supabase.auth.updateUser({ password });
+    const { data: currentUserData, error: currentUserError } = await supabase.auth.getUser();
+    if (currentUserError) throw currentUserError;
+    const currentUser = currentUserData.user;
+    if (!currentUser.email) throw new Error('Your signed-in email is not available.');
+
+    const { data: verifiedSession, error: verificationError } = await supabase.auth.signInWithPassword({
+      email: currentUser.email,
+      password: currentPassword,
+    });
+    if (verificationError || verifiedSession.user?.id !== currentUser.id) {
+      console.warn('Password change reauthentication failed.');
+      throw new Error('Your current password is incorrect.');
+    }
+
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
     if (error) throw error;
   } catch (error) {
     throw settingError(error);

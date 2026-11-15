@@ -40,6 +40,7 @@ export type AuthContextValue = {
   error: string | null;
   ctx: AuthUser | null;
   refresh: () => Promise<AuthUser | null>;
+  updateBusinessContext: (business: Partial<NonNullable<AuthUser['business']>>) => void;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (
     user: Omit<AuthUser, 'id' | 'businessId' | 'businessName' | 'business'>,
@@ -78,6 +79,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false);
     }
+  }, []);
+
+  const updateBusinessContext = useCallback((business: Partial<NonNullable<AuthUser['business']>>) => {
+    setCtx((current) => {
+      if (!current?.business) return current;
+      const nextBusiness = { ...current.business, ...business };
+      setDefaultCurrencyCode(nextBusiness.currencyCode);
+      return {
+        ...current,
+        business: nextBusiness,
+        businessName: nextBusiness.name,
+      };
+    });
   }, []);
 
   const signIn = useCallback(async (email: string, password: string) => {
@@ -130,7 +144,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [refresh]);
 
   return (
-    <AuthContext.Provider value={{ loading, error, ctx, refresh, signIn, signUp }}>
+    <AuthContext.Provider value={{ loading, error, ctx, refresh, updateBusinessContext, signIn, signUp }}>
       {children}
     </AuthContext.Provider>
   );

@@ -1,5 +1,6 @@
 import * as ImagePicker from 'expo-image-picker';
 import { Image } from 'expo-image';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { Alert, Pressable, Text, View } from 'react-native';
 
@@ -15,7 +16,9 @@ import { getLogoUrl, removeBusinessLogo, updateBusiness, uploadBusinessLogo } fr
 const businessTypes = ['Retail shop', 'Boutique', 'Supermarket', 'Pharmacy', 'Electronics', 'Food & drinks', 'Hardware', 'Other'];
 
 export default function BusinessSettings() {
-  const { ctx, refresh } = useAuth();
+  const { ctx, updateBusinessContext } = useAuth();
+  const { required } = useLocalSearchParams<{ required?: string }>();
+  const profileRequired = required === 'true';
   const business = ctx?.business;
   const editable = canEditBusiness(business?.role);
   const [name, setName] = useState(business?.name ?? '');
@@ -23,6 +26,7 @@ export default function BusinessSettings() {
   const [address, setAddress] = useState(business?.address ?? '');
   const [district, setDistrict] = useState(business?.district ?? '');
   const [phone, setPhone] = useState(business?.phone ?? '');
+  const [logoPath, setLogoPath] = useState<string | null>(business?.logoPath ?? null);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [logoBusy, setLogoBusy] = useState(false);
@@ -38,19 +42,40 @@ export default function BusinessSettings() {
   const disablePrevention = useUnsavedChanges(dirty);
 
   useEffect(() => {
+    setName(business?.name ?? '');
+    setType(business?.businessType ?? '');
+    setAddress(business?.address ?? '');
+    setDistrict(business?.district ?? '');
+    setPhone(business?.phone ?? '');
+  }, [
+    business?.address,
+    business?.businessType,
+    business?.district,
+    business?.name,
+    business?.phone,
+  ]);
+
+  useEffect(() => {
+    setLogoPath(business?.logoPath ?? null);
+  }, [business?.logoPath]);
+
+  useEffect(() => {
     let active = true;
-    void getLogoUrl(business?.logoPath ?? null).then((url) => {
+    void getLogoUrl(logoPath).then((url) => {
       if (active) setLogoUrl(url);
     }).catch((loadError: unknown) => {
       if (active) setError(friendlyErrorMessage(loadError));
     });
     return () => { active = false; };
-  }, [business?.logoPath]);
+  }, [logoPath]);
 
   const save = async () => {
     if (!ctx?.businessId) return setError('Business details are not available.');
     if (name.trim().length < 2) return setError('Business name must be at least 2 characters.');
-    if (phone.trim() && phone.replace(/\D/g, '').length < 8) return setError('Enter a phone number with at least 8 digits.');
+    if (!type.trim()) return setError('Choose a business type.');
+    if (!address.trim()) return setError('Enter the business address.');
+    if (!district.trim()) return setError('Enter the business district.');
+    if (phone.replace(/\D/g, '').length < 8) return setError('Enter a phone number with at least 8 digits.');
     setSaving(true);
     setError('');
     try {
@@ -61,9 +86,19 @@ export default function BusinessSettings() {
         district: district.trim(),
         phone: phone.trim(),
       });
-      await refresh();
+      updateBusinessContext({
+        name: name.trim(),
+        businessType: type,
+        address: address.trim(),
+        district: district.trim(),
+        phone: phone.trim(),
+      });
       disablePrevention();
-      Alert.alert('Business updated', 'Your business profile has been saved.');
+      if (profileRequired) {
+        router.replace('/(tabs)');
+      } else {
+        Alert.alert('Business updated', 'Your business profile has been saved.');
+      }
     } catch (saveError) {
       setError(friendlyErrorMessage(saveError));
     } finally {
@@ -89,7 +124,8 @@ export default function BusinessSettings() {
       const asset = result.canceled ? null : result.assets[0];
       if (!asset) return;
       const path = await uploadBusinessLogo(ctx.businessId, asset);
-      await refresh();
+      updateBusinessContext({ logoPath: path });
+      setLogoPath(path);
       setLogoUrl(await getLogoUrl(path));
       Alert.alert('Logo updated', 'Your business logo has been saved.');
     } catch (pickError) {
@@ -108,9 +144,10 @@ export default function BusinessSettings() {
         style: 'destructive',
         onPress: () => {
           setLogoBusy(true);
-          void removeBusinessLogo(ctx.businessId!, business?.logoPath ?? null).then(async () => {
+          void removeBusinessLogo(ctx.businessId!, logoPath).then(() => {
+            updateBusinessContext({ logoPath: null });
+            setLogoPath(null);
             setLogoUrl(null);
-            await refresh();
           }).catch((removeError: unknown) => setError(friendlyErrorMessage(removeError)))
             .finally(() => setLogoBusy(false));
         },
@@ -121,8 +158,10 @@ export default function BusinessSettings() {
   return (
     <SettingsPage
       title="Business profile"
-      subtitle="Business details and logo."
-      footer={editable ? <Button label="Save changes" onPress={() => void save()} loading={saving} disabled={!dirty || saving} /> : undefined}
+      subtitle={profileRequired
+        ? 'Complete your business profile to unlock the rest of the app. You can edit it again later.'
+        : 'Business details and logo.'}
+      footer={editable ? <Button label={profileRequired ? 'Save and continue' : 'Save changes'} onPress={() => void save()} loading={saving} disabled={saving || (!dirty && !profileRequired)} /> : undefined}
     >
       <Card style={{ gap: Spacing.two }}>
         <Text style={{ color: colors.text, ...typography.heading }}>{business?.name ?? 'Business'}</Text>
@@ -130,7 +169,13 @@ export default function BusinessSettings() {
         <Text style={{ color: colors.textSecondary }}>Type: {business?.businessType ?? 'Not set'}</Text>
         <Text style={{ color: colors.textSecondary }}>Created: {business?.createdAt ? new Date(business.createdAt).toLocaleDateString() : 'Not available'}</Text>
       </Card>
-      {!editable ? <InfoMessage>Only owners and managers can edit business details.</InfoMessage> : null}
+      {!editable ? (
+        <InfoMessage>
+          {profileRequired
+            ? 'An owner or manager must complete this business profile before the team can use the app.'
+            : 'Only owners and managers can edit business details.'}
+        </InfoMessage>
+      ) : null}
       <Field label="Business name" value={name} onChangeText={setName} editable={editable} />
       <Text style={{ color: colors.text, ...typography.label }}>Business type</Text>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
@@ -152,7 +197,7 @@ export default function BusinessSettings() {
           <>
             <View style={{ width: '100%' }}><Button label="Choose from gallery" variant="outline" onPress={() => void pickLogo(false)} loading={logoBusy} /></View>
             <View style={{ width: '100%' }}><Button label="Take a photo" variant="outline" onPress={() => void pickLogo(true)} loading={logoBusy} /></View>
-            {business?.logoPath ? <Button label="Remove logo" variant="outline" onPress={removeLogo} disabled={logoBusy} /> : null}
+            {logoPath ? <Button label="Remove logo" variant="outline" onPress={removeLogo} disabled={logoBusy} /> : null}
           </>
         ) : null}
       </Card>

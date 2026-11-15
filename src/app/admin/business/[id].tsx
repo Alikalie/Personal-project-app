@@ -1,15 +1,16 @@
 import { useCallback, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { MapPin, Phone } from 'lucide-react-native';
 
 import { AdminCard, AdminError, AdminLoading, AdminReason, AdminReasonModal, AdminScreen, AdminStatusBadge } from '@/components/admin/AdminUi';
-import { Button } from '@/components/ui';
+import { Button, Field } from '@/components/ui';
 import { colors, Spacing, typography } from '@/constants/theme';
 import { friendlyErrorMessage } from '@/lib/errors';
 import {
   getAdminBusinessDetail,
   setAdminBusinessSuspended,
+  updateAdminBusiness,
   type AdminBusinessDetail,
 } from '@/services/adminService';
 
@@ -21,6 +22,12 @@ export default function AdminBusinessDetailScreen() {
   const [actionError, setActionError] = useState('');
   const [showSuspend, setShowSuspend] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState('');
+  const [businessType, setBusinessType] = useState('');
+  const [address, setAddress] = useState('');
+  const [district, setDistrict] = useState('');
+  const [phone, setPhone] = useState('');
 
   const load = useCallback(async () => {
     if (!id) {
@@ -31,7 +38,13 @@ export default function AdminBusinessDetailScreen() {
     setLoading(true);
     setError('');
     try {
-      setBusiness(await getAdminBusinessDetail(id));
+      const detail = await getAdminBusinessDetail(id);
+      setBusiness(detail);
+      setName(detail.name);
+      setBusinessType(detail.business_type ?? '');
+      setAddress(detail.address ?? '');
+      setDistrict(detail.district ?? '');
+      setPhone(detail.phone ?? '');
     } catch (loadError) {
       setError(friendlyErrorMessage(loadError, 'admin'));
     } finally {
@@ -50,10 +63,36 @@ export default function AdminBusinessDetailScreen() {
     try {
       await setAdminBusinessSuspended(business.business_id, !business.is_suspended, reason);
       setShowSuspend(false);
+      setBusiness({ ...business, is_suspended: !business.is_suspended, suspended_reason: business.is_suspended ? null : reason });
       await load();
     } catch (failure) {
-      setActionError(friendlyErrorMessage(failure, 'admin'));
+      setActionError(friendlyErrorMessage(failure));
       throw failure;
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const saveBusiness = async () => {
+    if (!business || saving) return;
+    if (name.trim().length < 2) {
+      setActionError('Business name must be at least 2 characters.');
+      return;
+    }
+    setSaving(true);
+    setActionError('');
+    try {
+      await updateAdminBusiness(business.business_id, { name, businessType, address, district, phone });
+      const updatedBusiness = await getAdminBusinessDetail(business.business_id);
+      setBusiness(updatedBusiness);
+      setName(updatedBusiness.name);
+      setBusinessType(updatedBusiness.business_type ?? '');
+      setAddress(updatedBusiness.address ?? '');
+      setDistrict(updatedBusiness.district ?? '');
+      setPhone(updatedBusiness.phone ?? '');
+      setEditing(false);
+    } catch (failure) {
+      setActionError(friendlyErrorMessage(failure));
     } finally {
       setSaving(false);
     }
@@ -64,7 +103,11 @@ export default function AdminBusinessDetailScreen() {
       {loading && !business ? <AdminLoading rows={5} /> : error && !business ? (
         <AdminError message={error} onRetry={() => void load()} />
       ) : business ? (
-        <ScrollView contentContainerStyle={styles.content}>
+        <ScrollView
+          contentContainerStyle={styles.content}
+          refreshControl={<RefreshControl refreshing={loading} onRefresh={() => void load()} />}
+        >
+          {error ? <AdminError message={error} onRetry={() => void load()} /> : null}
           {business.is_suspended ? (
             <View style={styles.suspendedBanner}>
               <Text style={styles.bannerTitle}>This business is suspended</Text>
@@ -99,6 +142,33 @@ export default function AdminBusinessDetailScreen() {
                 <Text style={styles.chevron}>›</Text>
               </Pressable>
             ) : <InfoRow label="Owner" value={business.owner_email || 'Not available'} />}
+            <Button
+              label={editing ? 'Cancel editing' : 'Edit business details'}
+              variant="outline"
+              onPress={() => {
+                if (editing) {
+                  setName(business.name);
+                  setBusinessType(business.business_type ?? '');
+                  setAddress(business.address ?? '');
+                  setDistrict(business.district ?? '');
+                  setPhone(business.phone ?? '');
+                }
+                setActionError('');
+                setEditing(!editing);
+              }}
+              disabled={saving}
+            />
+            {editing ? (
+              <View style={styles.editForm}>
+                <Field label="Business name" value={name} onChangeText={setName} />
+                <Field label="Business type" value={businessType} onChangeText={setBusinessType} />
+                <Field label="Address" value={address} onChangeText={setAddress} />
+                <Field label="District" value={district} onChangeText={setDistrict} />
+                <Field label="Phone" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
+                <Button label="Save business details" onPress={() => void saveBusiness()} loading={saving} disabled={saving} />
+              </View>
+            ) : null}
+            {actionError ? <Text style={styles.error}>{actionError}</Text> : null}
           </AdminCard>
 
           <AdminCard>
@@ -135,6 +205,8 @@ export default function AdminBusinessDetailScreen() {
                 setActionError('');
                 setShowSuspend(true);
               }}
+              loading={saving}
+              disabled={saving}
               variant={business.is_suspended ? 'outline' : 'primary'}
             />
             {actionError ? <Text style={styles.error}>{actionError}</Text> : null}
@@ -195,6 +267,7 @@ function relativeDate(value: string | null): string {
 
 const styles = StyleSheet.create({
   content: { gap: Spacing.three, paddingTop: Spacing.two, paddingBottom: Spacing.seven },
+  editForm: { gap: Spacing.two, marginTop: Spacing.two },
   suspendedBanner: { padding: Spacing.three, borderRadius: 12, backgroundColor: '#FDE9E9', gap: Spacing.two },
   bannerTitle: { color: colors.danger, ...typography.label },
   identity: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, marginBottom: Spacing.two },

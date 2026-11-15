@@ -6,15 +6,15 @@ import { Copy, Mail, Phone, Shield, UserRound } from 'lucide-react-native';
 
 import { useAuth } from '@/components/AuthProvider';
 import { AdminCard, AdminError, AdminInitials, AdminLoading, AdminReason, AdminReasonModal, AdminScreen, AdminStatusBadge } from '@/components/admin/AdminUi';
-import { Button } from '@/components/ui';
+import { Button, Field } from '@/components/ui';
 import { colors, Spacing, typography } from '@/constants/theme';
 import { friendlyErrorMessage } from '@/lib/errors';
 import {
   getAdminUserDetail,
   grantPlatformAdmin,
-  refreshAdminOverview,
   revokePlatformAdmin,
   setAdminUserSuspended,
+  updateAdminProfile,
   type AdminUserDetail,
 } from '@/services/adminService';
 
@@ -22,12 +22,17 @@ export default function AdminUserDetailScreen() {
   const { ctx } = useAuth();
   const { id } = useLocalSearchParams<{ id: string }>();
   const superAdmin = ctx?.platformAdminLevel === 'super_admin';
+  const canEditProfile = ctx?.platformAdminLevel === 'super_admin' || ctx?.platformAdminLevel === 'support';
   const [user, setUser] = useState<AdminUserDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [actionError, setActionError] = useState('');
+  const [profileError, setProfileError] = useState('');
   const [saving, setSaving] = useState(false);
   const [showSuspend, setShowSuspend] = useState(false);
+  const [editingProfile, setEditingProfile] = useState(false);
+  const [profileName, setProfileName] = useState('');
+  const [profilePhone, setProfilePhone] = useState('');
 
   const load = useCallback(async () => {
     if (!id) {
@@ -38,7 +43,10 @@ export default function AdminUserDetailScreen() {
     setLoading(true);
     setError('');
     try {
-      setUser(await getAdminUserDetail(id));
+      const detail = await getAdminUserDetail(id);
+      setUser(detail);
+      setProfileName(detail.full_name);
+      setProfilePhone(detail.phone ?? '');
     } catch (loadError) {
       setError(friendlyErrorMessage(loadError, 'admin'));
     } finally {
@@ -53,6 +61,32 @@ export default function AdminUserDetailScreen() {
   const self = Boolean(ctx?.id && user?.user_id === ctx.id);
   const isAnotherAdmin = Boolean(user?.platform_level && !self);
   const canChangeStatus = Boolean(user && !self && (!isAnotherAdmin || superAdmin));
+  const saveProfile = async () => {
+    if (!user || !superAdmin || saving) return;
+    if (profileName.trim().length < 2) {
+      setProfileError('Full name must be at least 2 characters.');
+      return;
+    }
+    if (profilePhone.trim() && profilePhone.replace(/\D/g, '').length < 8) {
+      setProfileError('Enter a phone number with at least 8 digits, or leave it blank.');
+      return;
+    }
+    setSaving(true);
+    setProfileError('');
+    try {
+      await updateAdminProfile(user.user_id, profileName, profilePhone);
+      const updatedUser = await getAdminUserDetail(user.user_id);
+      setUser(updatedUser);
+      setProfileName(updatedUser.full_name);
+      setProfilePhone(updatedUser.phone ?? '');
+      setEditingProfile(false);
+    } catch (failure) {
+      setProfileError(friendlyErrorMessage(failure));
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const changeAdminLevel = async (level: 'support' | 'super_admin') => {
     if (!user || !superAdmin || saving) return;
     setSaving(true);
@@ -101,9 +135,10 @@ export default function AdminUserDetailScreen() {
     try {
       await setAdminUserSuspended(user.user_id, !user.is_suspended, reason);
       setShowSuspend(false);
+      setUser({ ...user, is_suspended: !user.is_suspended, suspended_reason: user.is_suspended ? null : reason });
       await load();
     } catch (actionFailure) {
-      setActionError(friendlyErrorMessage(actionFailure, 'admin'));
+      setActionError(friendlyErrorMessage(actionFailure));
       throw actionFailure;
     } finally {
       setSaving(false);
@@ -116,6 +151,7 @@ export default function AdminUserDetailScreen() {
         <AdminError message={error} onRetry={() => void load()} />
       ) : user ? (
         <ScrollView contentContainerStyle={styles.content}>
+          {error ? <AdminError message={error} onRetry={() => void load()} /> : null}
           {user.is_suspended ? (
             <View style={styles.suspendedBanner}>
               <Text style={styles.bannerTitle}>This account is suspended</Text>
@@ -139,6 +175,32 @@ export default function AdminUserDetailScreen() {
               <SmallAction label="Copy profile code" icon={Copy} onPress={() => void copy(user.profile_code, 'Profile code')} />
               <SmallAction label="Copy email" icon={Copy} onPress={() => void copy(user.email, 'Email')} />
             </View>
+            {canEditProfile ? (
+              <>
+                <Button
+                  label={editingProfile ? 'Cancel profile edit' : 'Edit user profile'}
+                  variant="outline"
+                  disabled={saving}
+                  onPress={() => {
+                    if (editingProfile) {
+                      setProfileName(user.full_name);
+                      setProfilePhone(user.phone ?? '');
+                    }
+                    setProfileError('');
+                    setEditingProfile(!editingProfile);
+                  }}
+                />
+                {editingProfile ? (
+                  <View style={styles.actions}>
+                    <Text style={styles.muted}>Email cannot be changed here.</Text>
+                    <Field label="Full name" value={profileName} onChangeText={setProfileName} />
+                    <Field label="Phone" value={profilePhone} onChangeText={setProfilePhone} keyboardType="phone-pad" />
+                    <Button label="Save user profile" onPress={() => void saveProfile()} loading={saving} disabled={saving} />
+                  </View>
+                ) : null}
+              </>
+            ) : null}
+            {profileError ? <Text style={styles.error}>{profileError}</Text> : null}
           </AdminCard>
 
           <AdminCard>
