@@ -1,11 +1,11 @@
 {
   "expo": {
     "name": "MiShop",
-    "slug": "salonebiz-manager",
+    "slug": "mishop",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/mishop-icon.png",
-    "scheme": "salonebizmanager",
+    "scheme": "mishop",
     "userInterfaceStyle": "automatic",
     "ios": {
       "icon": "./assets/images/mishop-icon.png"
@@ -52,7 +52,8 @@
         {
           "faceIDPermission": "MiShop uses device authentication to protect your app."
         }
-      ]
+      ],
+      "expo-status-bar"
     ],
     "experiments": {
       "typedRoutes": true,

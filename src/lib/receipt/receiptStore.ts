@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import type { ReceiptData } from '@/lib/receipt/types';
 
-const receiptKey = (key: string) => `@salonebiz/receipt/${key}`;
+const receiptKey = (key: string) => `@mishop/receipt/${key}`;
 
 function isReceiptData(value: unknown): value is ReceiptData {
   if (typeof value !== 'object' || value === null) return false;
@@ -27,6 +27,6 @@ export async function loadReceiptData(key: string): Promise<ReceiptData | null> 
 
 export async function clearReceiptDataCache(): Promise<void> {
   const keys = await AsyncStorage.getAllKeys();
-  const receiptKeys = keys.filter((key) => key.startsWith('@salonebiz/receipt/'));
+  const receiptKeys = keys.filter((key) => key.startsWith('@mishop/receipt/'));
   if (receiptKeys.length) await AsyncStorage.multiRemove(receiptKeys);
 }

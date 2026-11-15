@@ -11,7 +11,7 @@ import { receiptPageSize } from '@/lib/receipt/receiptHtml';
 import type { ReceiptData, ReceiptLayout } from '@/lib/receipt/types';
 import { formatMoney } from '@/lib/money';
 
-const savedDirectoryKey = '@salonebiz/receipt-download-directory';
+const savedDirectoryKey = '@mishop/receipt-download-directory';
 
 function safeReceiptName(receiptNo: string): string {
   const safe = receiptNo.replace(/[^A-Za-z0-9_-]/g, '-').slice(0, 60) || 'receipt';

@@ -5,9 +5,9 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import { setMoneyDisplayPreference } from '@/lib/money';
 
 const keys = {
-  decimals: '@salonebiz/preferences/show-decimals',
-  dailySummary: '@salonebiz/preferences/daily-sales-summary',
-  creditReminders: '@salonebiz/preferences/credit-reminders',
+  decimals: '@mishop/preferences/show-decimals',
+  dailySummary: '@mishop/preferences/daily-sales-summary',
+  creditReminders: '@mishop/preferences/credit-reminders',
 } as const;
 
 type PreferenceKey = keyof typeof keys;
