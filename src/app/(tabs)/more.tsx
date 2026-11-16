@@ -19,6 +19,7 @@ import { Alert, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAuth } from '@/components/AuthProvider';
+import { usePublicAppSettings } from '@/components/PublicAppSettingsProvider';
 import { Badge, Card, ListRow, SectionHeader } from '@/components/ds';
 import { colors, radius, Spacing, typography } from '@/constants/theme';
 import { isPlatformAdmin } from '@/lib/permissions';
@@ -37,6 +38,7 @@ function initials(name: string) {
 
 export default function More() {
   const { ctx } = useAuth();
+  const { settings } = usePublicAppSettings();
   const { clearCart } = useCart();
   const [loggingOut, setLoggingOut] = useState(false);
   const [checkingUpdates, setCheckingUpdates] = useState(false);
@@ -146,7 +148,7 @@ export default function More() {
           <ListRow title="Notifications" subtitle={role === 'cashier' ? 'Some settings are read-only' : undefined} icon={Bell} chevron onPress={() => router.push('/settings/notifications')} />
         </SettingsGroup>
         <SettingsGroup title="Help">
-          {role === 'owner' ? <><ListRow title="Subscription and pricing" icon={CreditCard} chevron onPress={() => router.push('/settings/subscription')} /><View style={styles.divider} /></> : null}
+          {role === 'owner' && settings.subscriptions.enabled ? <><ListRow title="Subscription and pricing" icon={CreditCard} chevron onPress={() => router.push('/settings/subscription')} /><View style={styles.divider} /></> : null}
           <ListRow title="Help and support" icon={CircleHelp} chevron onPress={() => router.push('/settings/help')} />
           <View style={styles.divider} />
           <ListRow title="Privacy Policy" icon={FileText} chevron onPress={() => router.push({ pathname: '/legal/[type]', params: { type: 'privacy' } })} />

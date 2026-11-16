@@ -8,6 +8,7 @@ import {
   Building2,
   CircleHelp,
   ClipboardList,
+  CreditCard,
   Database,
   FileText,
   Headphones,
@@ -292,6 +293,7 @@ export default function AdminHome() {
             {superAdmin ? <MoreTool icon={Mail} title="Email list" onPress={() => router.push('/admin/email-export')} /> : null}
             <MoreTool icon={CircleHelp} title="FAQ" onPress={() => router.push('/admin/faq')} />
             <MoreTool icon={Settings} title="Settings" onPress={() => router.push('/admin/settings')} />
+            {superAdmin ? <MoreTool icon={CreditCard} title="Subscription plans" onPress={() => router.push('/admin/subscriptions')} /> : null}
             {superAdmin ? <MoreTool icon={Shield} title="Admin team" onPress={() => router.push('/admin/team')} /> : null}
             <MoreTool icon={Headphones} title="Support access" onPress={() => router.push('/admin/support-access')} />
           </View>

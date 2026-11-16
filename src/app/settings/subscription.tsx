@@ -1,4 +1,5 @@
 import { safeLogger } from '@/lib/safeLogger';
+import { useEffect } from 'react';
 import { Alert, Linking, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { Check } from 'lucide-react-native';
@@ -10,7 +11,7 @@ import { InfoMessage, SettingsPage } from '@/components/settings/SettingsPage';
 import { plans } from '@/constants/plans';
 import { colors, radius, Spacing, typography } from '@/constants/theme';
 import { canManageBilling } from '@/lib/permissions';
-import { formatSLE } from '@/lib/money';
+import { formatMoney } from '@/lib/money';
 import { safeContactUrl } from '@/lib/urls';
 import { usePublicAppSettings } from '@/components/PublicAppSettingsProvider';
 
@@ -18,6 +19,10 @@ export default function SubscriptionSettings() {
   const { ctx } = useAuth();
   const { settings } = usePublicAppSettings();
   const canManage = canManageBilling(ctx?.business?.role);
+
+  useEffect(() => {
+    if (!settings.subscriptions.enabled) router.replace('/(tabs)/more');
+  }, [settings.subscriptions.enabled]);
 
   const contactUs = async () => {
     const url = safeContactUrl(`mailto:${settings.supportEmail}?subject=${encodeURIComponent(`${settings.appName} plan upgrade`)}`);
@@ -32,8 +37,10 @@ export default function SubscriptionSettings() {
     }
   };
 
+  if (!settings.subscriptions.enabled) return null;
+
   return (
-    <SettingsPage title="Subscription and pricing" subtitle="Plan options and pricing are placeholders for now.">
+    <SettingsPage title="Subscription and pricing" subtitle="Plan prices are shown in Sierra Leonean leones (SLE).">
       {!canManage ? <InfoMessage>Only the business owner can manage subscription options.</InfoMessage> : null}
       <Card style={styles.current}>
         <Text style={styles.kicker}>CURRENT PLAN</Text>
@@ -44,8 +51,7 @@ export default function SubscriptionSettings() {
         {plans.map((plan) => (
           <Card key={plan.name} style={styles.plan}>
             <Text style={styles.planName}>{plan.name}</Text>
-            <Text style={styles.price}>{formatSLE(plan.monthlyPriceMinor)}<Text style={styles.period}> / month</Text></Text>
-            <Text style={styles.placeholder}>Placeholder price</Text>
+            <Text style={styles.price}>{formatMoney(settings.subscriptions.plans[plan.id].monthlyPriceMinor, settings.subscriptions.priceCurrencyCode)}<Text style={styles.period}> / month</Text></Text>
             <View style={styles.features}>
               {plan.features.map((feature) => (
                 <View key={feature} style={styles.feature}>
@@ -54,6 +60,12 @@ export default function SubscriptionSettings() {
                 </View>
               ))}
             </View>
+            <Text style={styles.usageTitle}>Plan usage</Text>
+            {Object.entries(settings.subscriptions.plans[plan.id].limits).map(([metric, limit]) => (
+              <Text key={metric} style={styles.usageText}>
+                {usageLabels[metric as keyof typeof usageLabels]}: {limit === null ? 'Unlimited' : limit}
+              </Text>
+            ))}
             {canManage ? <Button label="Contact us to upgrade" variant="outline" onPress={() => void contactUs()} /> : null}
           </Card>
         ))}
@@ -72,8 +84,16 @@ const styles = StyleSheet.create({
   planName: { color: colors.text, ...typography.heading },
   price: { color: colors.primaryDark, fontSize: 22, fontWeight: '800' },
   period: { color: colors.textSecondary, fontSize: 13, fontWeight: '500' },
-  placeholder: { color: colors.textSecondary, ...typography.caption },
   features: { gap: Spacing.two },
   feature: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
   featureText: { flex: 1, color: colors.text, ...typography.body },
+  usageTitle: { color: colors.text, ...typography.label },
+  usageText: { color: colors.textSecondary, ...typography.caption },
 });
+
+const usageLabels = {
+  products: 'Products',
+  team: 'Team members',
+  monthly_sales: 'Sales per month',
+  customers: 'Customers',
+};

@@ -4,10 +4,10 @@ import { router } from 'expo-router';
 import { MapPin, Phone } from 'lucide-react-native';
 
 import { Button, Field, Screen, StepDots } from '@/components/ui';
+import { CurrencyPicker } from '@/components/ui/CurrencyPicker';
 import { useAuth } from '@/components/AuthProvider';
-import { colors, radius, Spacing, typography } from '@/constants/theme';
+import { colors, typography } from '@/constants/theme';
 import { friendlyErrorMessage } from '@/lib/errors';
-import { supportedCurrencies } from '@/lib/currencies';
 import { createBusiness, routeFor } from '@/services/authService';
 import { updateBusiness } from '@/services/settingsService';
 import { clearOnboarding, onboarding } from '@/services/onboardingStore';
@@ -82,33 +82,7 @@ export default function BusinessProfile() {
       <Text style={{ color: colors.textSecondary, ...typography.caption }}>
         Sierra Leonean Leone is selected by default. You can change this later in Settings.
       </Text>
-      <View style={{ gap: Spacing.two, marginBottom: Spacing.three }}>
-        {supportedCurrencies.map((currency) => {
-          const active = currency.code === currencyCode;
-          return (
-            <Pressable
-              key={currency.code}
-              onPress={() => setCurrencyCode(currency.code)}
-              style={{
-                minHeight: 52,
-                paddingHorizontal: Spacing.three,
-                borderRadius: radius.md,
-                borderWidth: 1.5,
-                borderColor: active ? colors.primary : colors.border,
-                backgroundColor: active ? colors.primaryLight : colors.white,
-                justifyContent: 'center',
-              }}
-              accessibilityRole="radio"
-              accessibilityLabel={`${currency.name}, ${currency.code}`}
-              accessibilityState={{ selected: active }}
-            >
-              <Text style={{ color: active ? colors.primaryDark : colors.text, ...typography.label }}>
-                {currency.name} ({currency.code}){active ? '  ·  Selected' : ''}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
+      <CurrencyPicker value={currencyCode} onChange={setCurrencyCode} disabled={loading} />
     </Screen>
   );
 }

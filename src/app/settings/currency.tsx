@@ -1,16 +1,15 @@
 import { safeLogger } from '@/lib/safeLogger';
 import { useState } from 'react';
-import { Check, Coins } from 'lucide-react-native';
 import { Switch, Text, View } from 'react-native';
 
-import { Card, ListRow } from '@/components/ds';
+import { Card } from '@/components/ds';
+import { CurrencyPicker } from '@/components/ui/CurrencyPicker';
 import { InfoMessage, SettingsPage } from '@/components/settings/SettingsPage';
 import { usePreferences } from '@/components/PreferencesProvider';
 import { useAuth } from '@/components/AuthProvider';
 import { colors, typography } from '@/constants/theme';
 import { canEditBusiness } from '@/lib/permissions';
 import { friendlyErrorMessage } from '@/lib/errors';
-import { supportedCurrencies } from '@/lib/currencies';
 import { updateBusiness } from '@/services/settingsService';
 
 export default function CurrencySettings() {
@@ -49,18 +48,7 @@ export default function CurrencySettings() {
   return (
     <SettingsPage title="Currency" subtitle="Choose the business currency. Money remains stored in integer minor units.">
       <Card style={{ padding: 0, borderWidth: 0 }}>
-        {supportedCurrencies.map((currency, index) => (
-          <View key={currency.code}>
-            {index ? <View style={{ height: 1, backgroundColor: colors.border, marginHorizontal: 16 }} /> : null}
-            <ListRow
-              icon={currency.code === currencyCode ? Check : Coins}
-              title={`${currency.name} (${currency.code})`}
-              subtitle={currency.code === currencyCode ? 'Active business currency' : undefined}
-              trailingValue={currency.code === currencyCode ? 'Active' : undefined}
-              onPress={editable ? () => void selectCurrency(currency.code) : undefined}
-            />
-          </View>
-        ))}
+        <CurrencyPicker value={currencyCode} onChange={(code) => void selectCurrency(code)} disabled={!editable || savingCurrency} />
         <View style={{ height: 1, backgroundColor: colors.border, marginHorizontal: 16 }} />
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16, minHeight: 68 }}>
           <View style={{ flex: 1 }}>

@@ -2,6 +2,11 @@ import { safeLogger } from '@/lib/safeLogger';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { support } from '@/constants/support';
+import {
+  getDefaultSubscriptionSettings,
+  parseSubscriptionSettings,
+  type SubscriptionSettings,
+} from '@/constants/subscription';
 import { supabase } from '@/lib/supabase';
 
 export type PublicAppSettings = {
@@ -10,6 +15,7 @@ export type PublicAppSettings = {
   supportEmail: string;
   supportWhatsapp: string;
   supportPhone: string;
+  subscriptions: SubscriptionSettings;
 };
 
 const storageKey = '@mishop/public-app-settings';
@@ -19,8 +25,9 @@ const defaults: PublicAppSettings = {
   supportEmail: support.email,
   supportWhatsapp: support.whatsappNumber,
   supportPhone: support.phoneNumber,
+  subscriptions: getDefaultSubscriptionSettings(),
 };
-const keys = ['app_name', 'tagline', 'support_email', 'support_whatsapp', 'support_phone'];
+const keys = ['app_name', 'tagline', 'support_email', 'support_whatsapp', 'support_phone', 'subscription_plans'];
 
 function settingString(value: unknown): string | null {
   if (typeof value === 'string' && value.trim()) return value.trim();
@@ -34,10 +41,15 @@ function settingString(value: unknown): string | null {
 function mapSettings(rows: unknown): PublicAppSettings {
   if (!Array.isArray(rows)) return defaults;
   const found = new Map<string, string>();
+  let subscriptionValue: unknown;
   for (const value of rows) {
     if (typeof value !== 'object' || value === null) continue;
     const row = value as Record<string, unknown>;
     if (typeof row.key !== 'string') continue;
+    if (row.key === 'subscription_plans') {
+      subscriptionValue = row.value;
+      continue;
+    }
     const text = settingString(row.value);
     if (text) found.set(row.key, text);
   }
@@ -47,6 +59,7 @@ function mapSettings(rows: unknown): PublicAppSettings {
     supportEmail: found.get('support_email') ?? defaults.supportEmail,
     supportWhatsapp: found.get('support_whatsapp') ?? defaults.supportWhatsapp,
     supportPhone: found.get('support_phone') ?? defaults.supportPhone,
+    subscriptions: parseSubscriptionSettings(subscriptionValue),
   };
 }
 
@@ -61,7 +74,12 @@ export async function getPublicAppSettings(): Promise<PublicAppSettings> {
     const cached = await AsyncStorage.getItem(storageKey);
     if (!cached) throw error;
     try {
-      return { ...defaults, ...JSON.parse(cached) as Partial<PublicAppSettings> };
+      const saved = JSON.parse(cached) as Partial<PublicAppSettings>;
+      return {
+        ...defaults,
+        ...saved,
+        subscriptions: parseSubscriptionSettings(saved.subscriptions),
+      };
     } catch (cacheError) {
       safeLogger.warn('Cached public app settings could not be read:', cacheError);
       return defaults;
