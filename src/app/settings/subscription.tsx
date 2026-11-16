@@ -17,12 +17,12 @@ import { usePublicAppSettings } from '@/components/PublicAppSettingsProvider';
 
 export default function SubscriptionSettings() {
   const { ctx } = useAuth();
-  const { settings } = usePublicAppSettings();
+  const { settings, loading: settingsLoading } = usePublicAppSettings();
   const canManage = canManageBilling(ctx?.business?.role);
 
   useEffect(() => {
-    if (!settings.subscriptions.enabled) router.replace('/(tabs)/more');
-  }, [settings.subscriptions.enabled]);
+    if (!settingsLoading && !settings.subscriptions.enabled) router.replace('/(tabs)/more');
+  }, [settingsLoading, settings.subscriptions.enabled]);
 
   const contactUs = async () => {
     const url = safeContactUrl(`mailto:${settings.supportEmail}?subject=${encodeURIComponent(`${settings.appName} plan upgrade`)}`);
@@ -37,7 +37,7 @@ export default function SubscriptionSettings() {
     }
   };
 
-  if (!settings.subscriptions.enabled) return null;
+  if (settingsLoading || !settings.subscriptions.enabled) return null;
 
   return (
     <SettingsPage title="Subscription and pricing" subtitle="Plan prices are shown in Sierra Leonean leones (SLE).">

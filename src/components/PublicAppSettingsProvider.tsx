@@ -9,6 +9,7 @@ import {
 
 type PublicAppSettingsContextValue = {
   settings: PublicAppSettings;
+  loading: boolean;
   refresh: () => Promise<void>;
 };
 
@@ -16,9 +17,14 @@ const PublicAppSettingsContext = createContext<PublicAppSettingsContextValue | n
 
 export function PublicAppSettingsProvider({ children }: { children: ReactNode }) {
   const [settings, setSettings] = useState(getDefaultPublicAppSettings);
+  const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(async () => {
-    setSettings(await getPublicAppSettings());
+    try {
+      setSettings(await getPublicAppSettings());
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -27,7 +33,7 @@ export function PublicAppSettingsProvider({ children }: { children: ReactNode })
     });
   }, [refresh]);
 
-  const value = useMemo(() => ({ settings, refresh }), [settings, refresh]);
+  const value = useMemo(() => ({ settings, loading, refresh }), [settings, loading, refresh]);
   return <PublicAppSettingsContext.Provider value={value}>{children}</PublicAppSettingsContext.Provider>;
 }
 

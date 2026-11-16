@@ -14,7 +14,9 @@
       "package": "com.mishop.app",
       "allowBackup": false,
       "permissions": [
-        "android.permission.CAMERA"
+        "android.permission.CAMERA",
+        "android.permission.USE_BIOMETRIC",
+        "android.permission.USE_FINGERPRINT"
       ],
       "adaptiveIcon": {
         "backgroundColor": "#159B4A",
@@ -40,8 +42,8 @@
         "expo-splash-screen",
         {
           "backgroundColor": "#FFFFFF",
-          "image": "./assets/images/splash-icon.png",
-          "imageWidth": 220
+          "image": "./assets/images/splash-screen.png",
+          "imageWidth": 320
         }
       ],
       "expo-sharing",
@@ -58,6 +60,16 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {
+        "asyncRoutes": {
+          "web": true
+        }
+      },
+      "eas": {
+        "projectId": "0fa25317-84be-465f-9357-f3434e4a6483"
+      }
     }
   }
 }
