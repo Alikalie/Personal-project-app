@@ -22,6 +22,7 @@ import { AdminCard, AdminError, AdminLoading, AdminScreen } from '@/components/a
 import { usePublicAppSettings } from '@/components/PublicAppSettingsProvider';
 import { Button, Field } from '@/components/ui';
 import { colors, radius, Spacing, typography } from '@/constants/theme';
+import { isValidEmailAddress, isValidPhoneNumber } from '@/lib/contactValidation';
 import { friendlyErrorMessage } from '@/lib/errors';
 import { listAppSettings, saveAppSetting } from '@/services/contentService';
 import { listLegalDocumentVersions } from '@/services/legalAdminService';
@@ -110,12 +111,12 @@ export default function AdminHome() {
     const email = supportEmail.trim();
     const phone = supportPhone.trim();
     const whatsapp = supportWhatsapp.trim();
-    if (!/^\S+@\S+\.\S+$/.test(email)) {
+    if (!isValidEmailAddress(email)) {
       setContactError('Enter a valid support email address.');
       return;
     }
-    if (phone.replace(/\D/g, '').length < 7 || whatsapp.replace(/\D/g, '').length < 7) {
-      setContactError('Enter valid support phone and WhatsApp numbers, including the country code.');
+    if (!isValidPhoneNumber(phone) || !isValidPhoneNumber(whatsapp)) {
+      setContactError('Enter valid support phone and WhatsApp numbers with 8 to 15 digits.');
       return;
     }
     setSavingContacts(true);

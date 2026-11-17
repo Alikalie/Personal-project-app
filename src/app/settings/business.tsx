@@ -6,10 +6,12 @@ import { Alert, Pressable, Text, View } from 'react-native';
 
 import { Button, Field } from '@/components/ui';
 import { useAuth } from '@/components/AuthProvider';
+import { ContactInfoHint } from '@/components/ContactInfoHint';
 import { Badge, Card } from '@/components/ds';
 import { InfoMessage, SettingsPage, useUnsavedChanges } from '@/components/settings/SettingsPage';
 import { colors, radius, Spacing, typography } from '@/constants/theme';
-import { canEditBusiness } from '@/lib/permissions';
+import { isValidPhoneNumber } from '@/lib/contactValidation';
+import { canEditBusiness, canEditBusinessProfile, isBusinessProfileLocked } from '@/lib/permissions';
 import { friendlyErrorMessage } from '@/lib/errors';
 import { getLogoUrl, removeBusinessLogo, updateBusiness, uploadBusinessLogo } from '@/services/settingsService';
 
@@ -18,9 +20,19 @@ const businessTypes = ['Retail shop', 'Boutique', 'Supermarket', 'Pharmacy', 'El
 export default function BusinessSettings() {
   const { ctx, updateBusinessContext } = useAuth();
   const { required } = useLocalSearchParams<{ required?: string }>();
+  const [now, setNow] = useState(0);
   const profileRequired = required === 'true';
   const business = ctx?.business;
-  const editable = canEditBusiness(business?.role);
+  const canManageBusiness = canEditBusiness(business?.role);
+  const hasProfileLockStatus = Boolean(
+    business && (business.profileEditLockedUntil === null || typeof business.profileEditLockedUntil === 'string'),
+  );
+  const profileLocked = isBusinessProfileLocked(business?.profileEditLockedUntil, now);
+  const profileLockDate = typeof business?.profileEditLockedUntil === 'string'
+    ? Date.parse(business.profileEditLockedUntil)
+    : Number.NaN;
+  const editable = hasProfileLockStatus
+    && canEditBusinessProfile(business?.role, business?.profileEditLockedUntil, now);
   const [name, setName] = useState(business?.name ?? '');
   const [type, setType] = useState(business?.businessType ?? '');
   const [address, setAddress] = useState(business?.address ?? '');
@@ -40,6 +52,24 @@ export default function BusinessSettings() {
   }), [business]);
   const dirty = name !== original.name || type !== original.type || address !== original.address || district !== original.district || phone !== original.phone;
   const disablePrevention = useUnsavedChanges(dirty);
+
+  useEffect(() => {
+    let unlockTimer: ReturnType<typeof setTimeout> | undefined;
+    const refreshLock = () => {
+      const currentTime = Date.now();
+      setNow(currentTime);
+      if (typeof business?.profileEditLockedUntil !== 'string') return;
+      const remaining = Date.parse(business.profileEditLockedUntil) - currentTime;
+      if (Number.isFinite(remaining) && remaining > 0) {
+        unlockTimer = setTimeout(refreshLock, remaining);
+      }
+    };
+    const initialTimer = setTimeout(refreshLock, 0);
+    return () => {
+      clearTimeout(initialTimer);
+      if (unlockTimer) clearTimeout(unlockTimer);
+    };
+  }, [business?.profileEditLockedUntil]);
 
   useEffect(() => {
     setName(business?.name ?? '');
@@ -75,17 +105,21 @@ export default function BusinessSettings() {
     if (!type.trim()) return setError('Choose a business type.');
     if (!address.trim()) return setError('Enter the business address.');
     if (!district.trim()) return setError('Enter the business district.');
-    if (phone.replace(/\D/g, '').length < 8) return setError('Enter a phone number with at least 8 digits.');
+    if (!isValidPhoneNumber(phone)) return setError('Enter a valid phone number with 8 to 15 digits.');
     setSaving(true);
     setError('');
     try {
-      await updateBusiness(ctx.businessId, {
+      const profileEditLockedUntil = await updateBusiness(ctx.businessId, {
         name: name.trim(),
         business_type: type,
         address: address.trim(),
         district: district.trim(),
         phone: phone.trim(),
       });
+      if (!profileEditLockedUntil) {
+        throw new Error('The business profile cooldown could not be confirmed. Refresh and try again.');
+      }
+      updateBusinessContext({ profileEditLockedUntil });
       updateBusinessContext({
         name: name.trim(),
         businessType: type,
@@ -97,7 +131,7 @@ export default function BusinessSettings() {
       if (profileRequired) {
         router.replace('/(tabs)');
       } else {
-        Alert.alert('Business updated', 'Your business profile has been saved.');
+        Alert.alert('Business updated', 'Your profile is saved. Details and logo are now locked for 7 days.');
       }
     } catch (saveError) {
       setError(friendlyErrorMessage(saveError));
@@ -123,11 +157,11 @@ export default function BusinessSettings() {
         : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.9 });
       const asset = result.canceled ? null : result.assets[0];
       if (!asset) return;
-      const path = await uploadBusinessLogo(ctx.businessId, asset);
-      updateBusinessContext({ logoPath: path });
+      const { path, profileEditLockedUntil } = await uploadBusinessLogo(ctx.businessId, asset, logoPath);
+      updateBusinessContext({ logoPath: path, profileEditLockedUntil });
       setLogoPath(path);
       setLogoUrl(await getLogoUrl(path));
-      Alert.alert('Logo updated', 'Your business logo has been saved.');
+      Alert.alert('Logo updated', 'Your business logo has been saved. Profile details are now locked for 7 days.');
     } catch (pickError) {
       setError(friendlyErrorMessage(pickError));
     } finally {
@@ -144,10 +178,11 @@ export default function BusinessSettings() {
         style: 'destructive',
         onPress: () => {
           setLogoBusy(true);
-          void removeBusinessLogo(ctx.businessId!, logoPath).then(() => {
-            updateBusinessContext({ logoPath: null });
+          void removeBusinessLogo(ctx.businessId!, logoPath).then((profileEditLockedUntil) => {
+            updateBusinessContext({ logoPath: null, profileEditLockedUntil });
             setLogoPath(null);
             setLogoUrl(null);
+            Alert.alert('Logo removed', 'Profile details are now locked for 7 days.');
           }).catch((removeError: unknown) => setError(friendlyErrorMessage(removeError)))
             .finally(() => setLogoBusy(false));
         },
@@ -159,8 +194,18 @@ export default function BusinessSettings() {
     <SettingsPage
       title="Business profile"
       subtitle={profileRequired
-        ? 'Complete your business profile to unlock the rest of the app. You can edit it again later.'
-        : 'Business details and logo.'}
+        ? 'Complete your business profile to unlock the rest of the app.'
+        : !canManageBusiness
+          ? 'Only owners and managers can edit business details.'
+          : !hasProfileLockStatus
+            ? 'Business profile edit status is unavailable. Contact support.'
+            : profileLocked && Number.isFinite(profileLockDate)
+              ? `Business details and logo are locked until ${new Date(profileLockDate).toLocaleDateString()}.`
+              : profileLocked
+                ? 'Business profile edit status is unavailable. Contact support.'
+          : editable
+            ? 'After saving, business details and logo will be locked for 7 days.'
+            : 'Business profile details and logo are read-only.'}
       footer={editable ? <Button label={profileRequired ? 'Save and continue' : 'Save changes'} onPress={() => void save()} loading={saving} disabled={saving || (!dirty && !profileRequired)} /> : undefined}
     >
       <Card style={{ gap: Spacing.two }}>
@@ -171,9 +216,13 @@ export default function BusinessSettings() {
       </Card>
       {!editable ? (
         <InfoMessage>
-          {profileRequired
-            ? 'An owner or manager must complete this business profile before the team can use the app.'
-            : 'Only owners and managers can edit business details.'}
+          {!canManageBusiness
+            ? 'Only owners and managers can edit business details.'
+            : !hasProfileLockStatus
+              ? 'Business profile edit status is unavailable. Apply the profile cooldown migration or contact support.'
+              : profileLocked && Number.isFinite(profileLockDate)
+                ? `Business details and logo can next be edited on ${new Date(profileLockDate).toLocaleDateString()}.`
+                : 'Business profile edit status is invalid. Contact support for changes.'}
         </InfoMessage>
       ) : null}
       <Field label="Business name" value={name} onChangeText={setName} editable={editable} />
@@ -191,6 +240,9 @@ export default function BusinessSettings() {
       <Field label="Address" value={address} onChangeText={setAddress} editable={editable} />
       <Field label="District" value={district} onChangeText={setDistrict} editable={editable} />
       <Field label="Phone" value={phone} onChangeText={setPhone} keyboardType="phone-pad" editable={editable} />
+      <ContactInfoHint>
+        Enter a working phone number with your country code so customers and support can reach your business.
+      </ContactInfoHint>
       <Card style={{ gap: Spacing.three, alignItems: 'center' }}>
         {logoUrl ? <Image source={{ uri: logoUrl }} style={{ width: 120, height: 120, borderRadius: radius.md }} contentFit="contain" accessibilityLabel="Business logo preview" /> : <Text style={{ color: colors.textSecondary }}>No business logo uploaded</Text>}
         {editable ? (

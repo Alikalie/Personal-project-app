@@ -1,0 +1,4 @@
+project_id = "salonebiz-manager"
+
+[functions.manage-email-verification]
+verify_jwt = true

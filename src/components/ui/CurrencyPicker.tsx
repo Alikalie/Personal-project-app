@@ -5,18 +5,28 @@ import { FlatList, Modal, Pressable, SafeAreaView, StyleSheet, Text, TextInput, 
 import { supportedCurrencies, type SupportedCurrency } from '@/lib/currencies';
 import { colors, radius, Spacing, typography } from '@/constants/theme';
 
+const QUICK_CURRENCIES = [
+  { code: 'SLE', label: 'Le SLE' },
+  { code: 'USD', label: '$ USD' },
+  { code: 'EUR', label: '€ EUR' },
+  { code: 'GBP', label: '£ GBP' },
+];
+
 export function CurrencyPicker({
   value,
   onChange,
   disabled = false,
+  compact = false,
 }: {
   value: string;
   onChange: (code: string) => void;
   disabled?: boolean;
+  compact?: boolean;
 }) {
   const [visible, setVisible] = useState(false);
   const [search, setSearch] = useState('');
   const selected = supportedCurrencies.find((currency) => currency.code === value);
+  const hasQuickSelection = QUICK_CURRENCIES.some((currency) => currency.code === value);
   const normalizedSearch = search.trim().toLocaleLowerCase();
   const filteredCurrencies = useMemo(() => {
     if (!normalizedSearch) return supportedCurrencies;
@@ -34,21 +44,54 @@ export function CurrencyPicker({
 
   return (
     <>
-      <Pressable
-        onPress={() => setVisible(true)}
-        disabled={disabled}
-        style={styles.selector}
-        accessibilityRole="button"
-        accessibilityLabel={selected ? `Currency: ${selected.name} (${selected.code})` : `Currency: ${value}`}
-        accessibilityState={{ disabled }}
-      >
-        <View style={styles.selectorCopy}>
-          <Text style={styles.selectorLabel}>Business currency</Text>
-          <Text style={styles.selectorValue}>{selected ? `${selected.name} (${selected.code})` : value}</Text>
-          <Text style={styles.selectorHint}>Search by currency or country</Text>
+      {compact ? (
+        <View style={styles.quickOptions}>
+          {QUICK_CURRENCIES.map((currency) => {
+            const active = currency.code === value;
+            return (
+              <Pressable
+                key={currency.code}
+                onPress={() => onChange(currency.code)}
+                disabled={disabled}
+                style={[styles.quickOption, active && styles.quickOptionActive]}
+                accessibilityRole="radio"
+                accessibilityLabel={currency.label}
+                accessibilityState={{ selected: active, disabled }}
+              >
+                <Text style={[styles.quickOptionText, active && styles.quickOptionTextActive]}>{currency.label}</Text>
+              </Pressable>
+            );
+          })}
+          <Pressable
+            onPress={() => setVisible(true)}
+            disabled={disabled}
+            style={[styles.quickOption, !hasQuickSelection && styles.quickOptionActive]}
+            accessibilityRole="button"
+            accessibilityLabel={hasQuickSelection ? 'More currencies' : `More currencies, selected ${value}`}
+            accessibilityState={{ selected: !hasQuickSelection, disabled }}
+          >
+            <Text style={[styles.quickOptionText, !hasQuickSelection && styles.quickOptionTextActive]}>
+              {hasQuickSelection ? 'More' : `More · ${value}`}
+            </Text>
+          </Pressable>
         </View>
-        <ChevronDown size={20} color={colors.textSecondary} />
-      </Pressable>
+      ) : (
+        <Pressable
+          onPress={() => setVisible(true)}
+          disabled={disabled}
+          style={styles.selector}
+          accessibilityRole="button"
+          accessibilityLabel={selected ? `Currency: ${selected.name} (${selected.code})` : `Currency: ${value}`}
+          accessibilityState={{ disabled }}
+        >
+          <View style={styles.selectorCopy}>
+            <Text style={styles.selectorLabel}>Business currency</Text>
+            <Text style={styles.selectorValue}>{selected ? `${selected.name} (${selected.code})` : value}</Text>
+            <Text style={styles.selectorHint}>Search by currency or country</Text>
+          </View>
+          <ChevronDown size={20} color={colors.textSecondary} />
+        </Pressable>
+      )}
 
       <Modal visible={visible} animationType="slide" onRequestClose={close}>
         <SafeAreaView style={styles.modal}>
@@ -144,6 +187,21 @@ const styles = StyleSheet.create({
   selectorLabel: { color: colors.textSecondary, ...typography.caption },
   selectorValue: { color: colors.text, ...typography.label },
   selectorHint: { color: colors.textSecondary, ...typography.caption },
+  quickOptions: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  quickOption: {
+    minHeight: 40,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 10,
+    borderRadius: radius.xl,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.white,
+  },
+  quickOptionActive: { borderColor: colors.primary, backgroundColor: colors.primary },
+  quickOptionText: { color: colors.textSecondary, ...typography.caption },
+  quickOptionTextActive: { color: colors.white, fontWeight: '700' },
   modal: { flex: 1, backgroundColor: colors.background },
   header: {
     flexDirection: 'row',

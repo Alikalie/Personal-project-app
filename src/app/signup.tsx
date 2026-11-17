@@ -5,13 +5,13 @@ import { Check, CircleCheck, Lock, Mail, Phone, User } from 'lucide-react-native
 
 import { Button, Field, Screen } from '@/components/ui';
 import { useAuth } from '@/components/AuthProvider';
+import { ContactInfoHint } from '@/components/ContactInfoHint';
 import { LegalLinks } from '@/components/LegalLinks';
 import { colors } from '@/constants/theme';
+import { isValidEmailAddress, isValidPhoneNumber, normalizeEmailAddress } from '@/lib/contactValidation';
 import { friendlyErrorMessage } from '@/lib/errors';
 import { passwordPolicyError } from '@/lib/passwordPolicy';
 import { onboarding } from '@/services/onboardingStore';
-
-const validEmail = /^\S+@\S+\.\S+$/;
 
 export default function SignUp() {
   const { signUp, refresh } = useAuth();
@@ -30,11 +30,11 @@ export default function SignUp() {
   const submit = async () => {
     if (submitting.current) return;
     const trimmedName = name.trim();
-    const normalizedEmail = email.trim().toLowerCase();
+    const normalizedEmail = normalizeEmailAddress(email);
     const nextErrors: Record<string, string> = {};
     if (trimmedName.length < 2) nextErrors.name = 'Enter your full name (at least 2 characters).';
-    if (phone.replace(/\D/g, '').length < 8) nextErrors.phone = 'Enter a phone number with at least 8 digits.';
-    if (!validEmail.test(normalizedEmail)) nextErrors.email = 'Enter a valid email address.';
+    if (!isValidPhoneNumber(phone)) nextErrors.phone = 'Enter a valid phone number with 8 to 15 digits.';
+    if (!isValidEmailAddress(normalizedEmail)) nextErrors.email = 'Enter a valid email address.';
     const passwordError = passwordPolicyError(password);
     if (passwordError) nextErrors.password = passwordError;
     if (!acceptedLegal) nextErrors.legal = 'Agree to the Terms and Conditions and Privacy Policy to continue.';
@@ -133,6 +133,9 @@ export default function SignUp() {
       <Field label="Full name" icon={User} value={name} onChangeText={setName} placeholder="Your full name" error={errors.name} />
       <Field label="Phone number" icon={Phone} value={phone} onChangeText={setPhone} placeholder="+232 76 000000" keyboardType="phone-pad" error={errors.phone} />
       <Field label="Email" icon={Mail} value={email} onChangeText={setEmail} placeholder="you@example.com" keyboardType="email-address" autoCapitalize="none" error={errors.email} />
+      <ContactInfoHint>
+        Use an email address and phone number you can access, including your country code. They may be used for future verification and account recovery; incorrect details may make it harder to recover your account or business profile.
+      </ContactInfoHint>
       <Field label="Password" icon={Lock} value={password} onChangeText={setPassword} placeholder="8+ characters and a symbol" secure error={errors.password} />
       <Text style={{ color: colors.textSecondary, fontSize: 12, marginTop: -12, marginBottom: 8 }}>
         Use at least 8 characters and include a special character or symbol (for example, ! or #).

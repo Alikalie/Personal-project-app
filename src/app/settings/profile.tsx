@@ -4,9 +4,11 @@ import { useMemo, useState } from 'react';
 import { Alert, Text, View } from 'react-native';
 import { Button, Field } from '@/components/ui';
 import { useAuth } from '@/components/AuthProvider';
+import { ContactInfoHint } from '@/components/ContactInfoHint';
 import { Card, IconButton } from '@/components/ds';
 import { SettingsPage, InfoMessage, useUnsavedChanges } from '@/components/settings/SettingsPage';
 import { colors, typography } from '@/constants/theme';
+import { isValidPhoneNumber } from '@/lib/contactValidation';
 import { friendlyErrorMessage } from '@/lib/errors';
 import { updateProfile } from '@/services/settingsService';
 
@@ -21,9 +23,8 @@ export default function ProfileSettings() {
 
   const save = async () => {
     const cleanName = name.trim();
-    const digits = phone.replace(/\D/g, '');
     if (cleanName.length < 2) return setError('Enter your full name using at least 2 characters.');
-    if (phone.trim() && digits.length < 8) return setError('Enter a phone number with at least 8 digits.');
+    if (phone.trim() && !isValidPhoneNumber(phone)) return setError('Enter a valid phone number with 8 to 15 digits, or leave it blank.');
     if (!ctx) return setError('Your account details are not available. Please sign in again.');
     setLoading(true);
     setError('');
@@ -57,6 +58,9 @@ export default function ProfileSettings() {
     >
       <Field label="Full name" value={name} onChangeText={setName} autoCapitalize="words" textContentType="name" />
       <Field label="Phone number" value={phone} onChangeText={setPhone} keyboardType="phone-pad" textContentType="telephoneNumber" />
+      <ContactInfoHint>
+        Use a phone number you can access and include your country code. It may be used for future verification and account recovery.
+      </ContactInfoHint>
       <Card style={{ padding: 0, borderWidth: 0 }}>
         <View style={styles.readOnlyRow}>
           <View style={styles.detailText}>

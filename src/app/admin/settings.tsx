@@ -8,6 +8,7 @@ import { Button, Field } from '@/components/ui';
 import { colors, radius, Spacing, typography } from '@/constants/theme';
 import { friendlyErrorMessage } from '@/lib/errors';
 import { listAppSettings, saveAppSetting, type AppSettingRow } from '@/services/contentService';
+import { getEmailVerificationRequired, setEmailVerificationRequired } from '@/services/emailVerificationService';
 
 export default function AdminSettingsScreen() {
   const { ctx } = useAuth();
@@ -21,6 +22,18 @@ export default function AdminSettingsScreen() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [verificationRequired, setVerificationRequired] = useState<boolean | null>(null);
+  const [verificationLoading, setVerificationLoading] = useState(false);
+  const [verificationSaving, setVerificationSaving] = useState(false);
+  const [verificationError, setVerificationError] = useState('');
+
+  const setSetting = (setting: AppSettingRow) => {
+    setSelectedKey(setting.key);
+    setKey(setting.key);
+    setValueJson(JSON.stringify(setting.value, null, 2));
+    setDescription(setting.description ?? '');
+    setIsPublic(setting.is_public);
+  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -39,17 +52,24 @@ export default function AdminSettingsScreen() {
     }
   }, [selectedKey]);
 
+  const loadVerificationSetting = useCallback(async () => {
+    if (!superAdmin) return;
+    setVerificationLoading(true);
+    setVerificationError('');
+    try {
+      setVerificationRequired(await getEmailVerificationRequired());
+    } catch (loadError) {
+      setVerificationRequired(null);
+      setVerificationError(friendlyErrorMessage(loadError, 'admin'));
+    } finally {
+      setVerificationLoading(false);
+    }
+  }, [superAdmin]);
+
   useFocusEffect(useCallback(() => {
     void load();
-  }, [load]));
-
-  const setSetting = (setting: AppSettingRow) => {
-    setSelectedKey(setting.key);
-    setKey(setting.key);
-    setValueJson(JSON.stringify(setting.value, null, 2));
-    setDescription(setting.description ?? '');
-    setIsPublic(setting.is_public);
-  };
+    void loadVerificationSetting();
+  }, [load, loadVerificationSetting]));
 
   const togglePublic = (next: boolean) => {
     if (!superAdmin || saving) return;
@@ -86,45 +106,107 @@ export default function AdminSettingsScreen() {
     }
   };
 
+  const applyVerificationSetting = async (enabled: boolean) => {
+    if (!superAdmin || verificationSaving) return;
+    setVerificationSaving(true);
+    setVerificationError('');
+    try {
+      await setEmailVerificationRequired(enabled);
+      setVerificationRequired(enabled);
+    } catch (saveError) {
+      setVerificationError(friendlyErrorMessage(saveError, 'admin'));
+    } finally {
+      setVerificationSaving(false);
+    }
+  };
+
+  const confirmVerificationSetting = (enabled: boolean) => {
+    if (!superAdmin || verificationRequired === null || verificationSaving) return;
+    Alert.alert(
+      enabled ? 'Require email verification?' : 'Turn off email verification?',
+      enabled
+        ? 'New email and password signups must confirm their email before signing in. Existing accounts are not deleted.'
+        : 'New email and password signups can sign in without confirming email. Use this only temporarily; existing accounts are not changed.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: enabled ? 'Require verification' : 'Turn off', onPress: () => void applyVerificationSetting(enabled) },
+      ],
+    );
+  };
+
   return (
     <AdminScreen title="App settings" subtitle={superAdmin ? 'Super admin can edit settings' : 'Read-only settings'}>
-      {loading && settings.length === 0 ? <AdminLoading rows={4} /> : error && settings.length === 0 ? (
-        <AdminError message={error} onRetry={() => void load()} />
-      ) : (
-        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-          {error ? <Text style={styles.error}>{error}</Text> : null}
-          <View style={styles.list}>
-            {settings.map((setting) => (
-              <Pressable key={setting.key} onPress={() => setSetting(setting)} style={styles.row} accessibilityRole="button">
-                <View style={styles.rowCopy}>
-                  <Text style={styles.rowTitle}>{setting.key}</Text>
-                  <Text style={styles.muted} numberOfLines={1}>{JSON.stringify(setting.value)}</Text>
-                </View>
-                <Text style={setting.is_public ? styles.public : styles.private}>{setting.is_public ? 'Public' : 'Private'}</Text>
-              </Pressable>
-            ))}
-          </View>
-          {selectedKey ? (
-            <AdminCard>
-              <Text style={styles.sectionTitle}>Edit setting</Text>
-              <Field label="Key" value={key} onChangeText={setKey} editable={false} />
-              <Text style={styles.label}>Value (JSON)</Text>
-              <TextInput value={valueJson} onChangeText={setValueJson} editable={superAdmin && !saving} multiline textAlignVertical="top" style={styles.jsonInput} accessibilityLabel="Setting value JSON" />
-              <Field label="Description" value={description} onChangeText={setDescription} editable={superAdmin && !saving} />
-              <View style={styles.switchRow}>
-                <View style={styles.switchCopy}>
-                  <Text style={styles.label}>Public</Text>
-                  <Text style={styles.muted}>Public values are visible before sign-in.</Text>
-                </View>
-                <Switch value={isPublic} onValueChange={togglePublic} disabled={!superAdmin || saving} trackColor={{ true: colors.primary }} />
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        {superAdmin ? (
+          <AdminCard>
+            <Text style={styles.sectionTitle}>Email verification</Text>
+            <Text style={styles.muted}>
+              Control email confirmation for new email and password signups. Supabase Auth continues to validate email syntax.
+            </Text>
+            <View style={styles.switchRow}>
+              <View style={styles.switchCopy}>
+                <Text style={styles.label}>Require email confirmation</Text>
+                <Text style={styles.muted}>
+                  {verificationRequired === null
+                    ? 'Current status is unavailable.'
+                    : verificationRequired
+                      ? 'New signups must verify their email before signing in.'
+                      : 'New signups can continue without confirming their email.'}
+                </Text>
               </View>
-              {superAdmin ? <Button label="Save setting" onPress={() => void save()} loading={saving} disabled={saving} /> : null}
-            </AdminCard>
-          ) : (
-            <Text style={styles.muted}>Select a setting to view its value.</Text>
-          )}
-        </ScrollView>
-      )}
+              <Switch
+                value={verificationRequired ?? false}
+                onValueChange={confirmVerificationSetting}
+                disabled={verificationLoading || verificationSaving || verificationRequired === null}
+                trackColor={{ true: colors.primary }}
+                accessibilityLabel="Require email confirmation for new signups"
+              />
+            </View>
+            {verificationLoading ? <Text style={styles.muted}>Checking Supabase Auth setting…</Text> : null}
+            {verificationError ? <Text style={styles.error}>{verificationError}</Text> : null}
+            <Text style={styles.muted}>
+              This changes the hosted Supabase Auth setting for new signups only. It does not confirm that an email address is reachable or owned by the user.
+            </Text>
+          </AdminCard>
+        ) : null}
+        {loading && settings.length === 0 ? <AdminLoading rows={4} /> : error && settings.length === 0 ? (
+          <AdminError message={error} onRetry={() => void load()} />
+        ) : (
+          <>
+            {error ? <Text style={styles.error}>{error}</Text> : null}
+            <View style={styles.list}>
+              {settings.map((setting) => (
+                <Pressable key={setting.key} onPress={() => setSetting(setting)} style={styles.row} accessibilityRole="button">
+                  <View style={styles.rowCopy}>
+                    <Text style={styles.rowTitle}>{setting.key}</Text>
+                    <Text style={styles.muted} numberOfLines={1}>{JSON.stringify(setting.value)}</Text>
+                  </View>
+                  <Text style={setting.is_public ? styles.public : styles.private}>{setting.is_public ? 'Public' : 'Private'}</Text>
+                </Pressable>
+              ))}
+            </View>
+            {selectedKey ? (
+              <AdminCard>
+                <Text style={styles.sectionTitle}>Edit setting</Text>
+                <Field label="Key" value={key} onChangeText={setKey} editable={false} />
+                <Text style={styles.label}>Value (JSON)</Text>
+                <TextInput value={valueJson} onChangeText={setValueJson} editable={superAdmin && !saving} multiline textAlignVertical="top" style={styles.jsonInput} accessibilityLabel="Setting value JSON" />
+                <Field label="Description" value={description} onChangeText={setDescription} editable={superAdmin && !saving} />
+                <View style={styles.switchRow}>
+                  <View style={styles.switchCopy}>
+                    <Text style={styles.label}>Public</Text>
+                    <Text style={styles.muted}>Public values are visible before sign-in.</Text>
+                  </View>
+                  <Switch value={isPublic} onValueChange={togglePublic} disabled={!superAdmin || saving} trackColor={{ true: colors.primary }} />
+                </View>
+                {superAdmin ? <Button label="Save setting" onPress={() => void save()} loading={saving} disabled={saving} /> : null}
+              </AdminCard>
+            ) : (
+              <Text style={styles.muted}>Select a setting to view its value.</Text>
+            )}
+          </>
+        )}
+      </ScrollView>
     </AdminScreen>
   );
 }

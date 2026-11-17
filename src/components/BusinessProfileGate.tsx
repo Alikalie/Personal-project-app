@@ -1,10 +1,10 @@
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { router, useSegments } from 'expo-router';
 
 import { useAuth } from '@/components/AuthProvider';
 import { colors } from '@/constants/theme';
-import { isPlatformAdmin } from '@/lib/permissions';
+import { isBusinessProfileLocked, isPlatformAdmin } from '@/lib/permissions';
 
 function isProfileComplete(business: NonNullable<ReturnType<typeof useAuth>['ctx']>['business']): boolean {
   return Boolean(
@@ -19,20 +19,41 @@ function isProfileComplete(business: NonNullable<ReturnType<typeof useAuth>['ctx
 export function BusinessProfileGate({ children }: { children: ReactNode }) {
   const { ctx, loading } = useAuth();
   const segments = useSegments();
+  const [now, setNow] = useState(0);
   const onBusinessProfile = segments[0] === 'settings' && segments[1] === 'business';
   const requiresProfile = Boolean(
     ctx?.businessId
     && !isPlatformAdmin(ctx.platformAdminLevel)
     && !isProfileComplete(ctx.business),
   );
+  const profileEditLockedUntil = ctx?.business?.profileEditLockedUntil;
+  const canRequireProfile = !isBusinessProfileLocked(profileEditLockedUntil, now);
 
   useEffect(() => {
-    if (!loading && requiresProfile && !onBusinessProfile) {
+    let unlockTimer: ReturnType<typeof setTimeout> | undefined;
+    const refreshLock = () => {
+      const currentTime = Date.now();
+      setNow(currentTime);
+      if (typeof profileEditLockedUntil !== 'string') return;
+      const remaining = Date.parse(profileEditLockedUntil) - currentTime;
+      if (Number.isFinite(remaining) && remaining > 0) {
+        unlockTimer = setTimeout(refreshLock, remaining);
+      }
+    };
+    const initialTimer = setTimeout(refreshLock, 0);
+    return () => {
+      clearTimeout(initialTimer);
+      if (unlockTimer) clearTimeout(unlockTimer);
+    };
+  }, [profileEditLockedUntil]);
+
+  useEffect(() => {
+    if (!loading && requiresProfile && canRequireProfile && !onBusinessProfile) {
       router.replace({ pathname: '/settings/business', params: { required: 'true' } });
     }
-  }, [loading, onBusinessProfile, requiresProfile]);
+  }, [canRequireProfile, loading, onBusinessProfile, requiresProfile]);
 
-  if (requiresProfile && !onBusinessProfile) {
+  if (requiresProfile && canRequireProfile && !onBusinessProfile) {
     return (
       <View style={styles.loading}>
         <ActivityIndicator size="large" color={colors.primary} />

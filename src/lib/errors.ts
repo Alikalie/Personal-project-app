@@ -18,6 +18,10 @@ export function friendlyErrorMessage(error: unknown, context?: 'sale' | 'repayme
   const { message = '', code = '', status } = detailsOf(error);
   const normalized = `${code} ${message}`.toLowerCase();
 
+  if (/business profile edits are temporarily locked/.test(normalized)) {
+    return 'Business details and logo are locked for 7 days after a change. Try again after the cooldown ends.';
+  }
+
   if (context === 'repayment-record') {
     if (/payment is more than the customer owes|payment.*more than.*customer owes/.test(normalized)) {
       return 'That payment is more than the customer owes.';

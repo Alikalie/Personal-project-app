@@ -1,5 +1,6 @@
 import { safeLogger } from '@/lib/safeLogger';
 import { friendlyErrorMessage } from '@/lib/errors';
+import { isValidPhoneNumber } from '@/lib/contactValidation';
 import { supabase } from '@/lib/supabase';
 
 export type AdminOverview = {
@@ -350,6 +351,9 @@ export async function revokePlatformAdmin(userId: string): Promise<void> {
 }
 
 export async function updateAdminProfile(userId: string, fullName: string, phone: string): Promise<void> {
+  if (phone.trim() && !isValidPhoneNumber(phone)) {
+    throw new Error('Enter a valid phone number with 8 to 15 digits, or leave it blank.');
+  }
   await rpc<unknown>('admin_update_profile', {
     p_user_id: userId,
     p_full_name: fullName.trim(),
@@ -365,6 +369,9 @@ export async function updateAdminBusiness(businessId: string, input: {
   district: string;
   phone: string;
 }): Promise<void> {
+  if (!isValidPhoneNumber(input.phone)) {
+    throw new Error('Enter a valid phone number with 8 to 15 digits.');
+  }
   await rpc<unknown>('admin_update_business', {
     p_business_id: businessId,
     p_name: input.name.trim(),

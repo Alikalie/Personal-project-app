@@ -26,6 +26,7 @@ export type AuthUser = {
     district: string | null;
     phone: string | null;
     createdAt: string | null;
+    profileEditLockedUntil: string | null;
     logoPath: string | null;
     receiptHeader: string | null;
     receiptFooter: string | null;

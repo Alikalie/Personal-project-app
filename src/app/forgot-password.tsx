@@ -4,7 +4,9 @@ import { router } from 'expo-router';
 import { CheckCircle2, Mail } from 'lucide-react-native';
 
 import { Button, Field, Screen } from '@/components/ui';
+import { ContactInfoHint } from '@/components/ContactInfoHint';
 import { colors } from '@/constants/theme';
+import { isValidEmailAddress, normalizeEmailAddress } from '@/lib/contactValidation';
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState('');
@@ -12,10 +14,12 @@ export default function ForgotPassword() {
   const [error, setError] = useState('');
 
   const submit = () => {
-    if (!/^\S+@\S+\.\S+$/.test(email)) {
+    const normalizedEmail = normalizeEmailAddress(email);
+    if (!isValidEmailAddress(normalizedEmail)) {
       setError('Enter a valid email address.');
       return;
     }
+    setEmail(normalizedEmail);
     setError('');
     setSent(true);
   };
@@ -41,6 +45,9 @@ export default function ForgotPassword() {
       footer={<Button label="Send reset link" onPress={submit} />}
     >
       <Field label="Email" icon={Mail} value={email} onChangeText={setEmail} placeholder="you@example.com" keyboardType="email-address" autoCapitalize="none" error={error} />
+      <ContactInfoHint>
+        Enter the valid email address on your account and make sure you can access its inbox.
+      </ContactInfoHint>
     </Screen>
   );
 }

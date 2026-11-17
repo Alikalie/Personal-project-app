@@ -7,7 +7,9 @@ import { Copy, Mail, Phone, Shield, UserRound } from 'lucide-react-native';
 import { useAuth } from '@/components/AuthProvider';
 import { AdminCard, AdminError, AdminInitials, AdminLoading, AdminReason, AdminReasonModal, AdminScreen, AdminStatusBadge } from '@/components/admin/AdminUi';
 import { Button, Field } from '@/components/ui';
+import { ContactInfoHint } from '@/components/ContactInfoHint';
 import { colors, Spacing, typography } from '@/constants/theme';
+import { isValidPhoneNumber } from '@/lib/contactValidation';
 import { friendlyErrorMessage } from '@/lib/errors';
 import {
   getAdminUserDetail,
@@ -67,8 +69,8 @@ export default function AdminUserDetailScreen() {
       setProfileError('Full name must be at least 2 characters.');
       return;
     }
-    if (profilePhone.trim() && profilePhone.replace(/\D/g, '').length < 8) {
-      setProfileError('Enter a phone number with at least 8 digits, or leave it blank.');
+    if (profilePhone.trim() && !isValidPhoneNumber(profilePhone)) {
+      setProfileError('Enter a valid phone number with 8 to 15 digits, or leave it blank.');
       return;
     }
     setSaving(true);
@@ -195,6 +197,9 @@ export default function AdminUserDetailScreen() {
                     <Text style={styles.muted}>Email cannot be changed here.</Text>
                     <Field label="Full name" value={profileName} onChangeText={setProfileName} />
                     <Field label="Phone" value={profilePhone} onChangeText={setProfilePhone} keyboardType="phone-pad" />
+                    <ContactInfoHint>
+                      Use a phone number the user can access, with country code. It may be needed for future verification or account recovery.
+                    </ContactInfoHint>
                     <Button label="Save user profile" onPress={() => void saveProfile()} loading={saving} disabled={saving} />
                   </View>
                 ) : null}

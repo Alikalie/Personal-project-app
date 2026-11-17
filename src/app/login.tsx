@@ -5,12 +5,12 @@ import { Lock, Mail } from 'lucide-react-native';
 
 import { Button, Field, Screen } from '@/components/ui';
 import { useAuth } from '@/components/AuthProvider';
+import { ContactInfoHint } from '@/components/ContactInfoHint';
 import { colors } from '@/constants/theme';
+import { isValidEmailAddress, normalizeEmailAddress } from '@/lib/contactValidation';
 import { friendlyErrorMessage } from '@/lib/errors';
 import { routeFor } from '@/services/authService';
 import { LegalLinks } from '@/components/LegalLinks';
-
-const validEmail = /^\S+@\S+\.\S+$/;
 
 export default function Login() {
   const { signIn, refresh } = useAuth();
@@ -22,8 +22,8 @@ export default function Login() {
 
   const submit = async () => {
     if (submitting.current) return;
-    const normalizedEmail = email.trim().toLowerCase();
-    if (!validEmail.test(normalizedEmail) || password.length < 6) {
+    const normalizedEmail = normalizeEmailAddress(email);
+    if (!isValidEmailAddress(normalizedEmail) || password.length < 6) {
       setError('Enter a valid email and a password of at least 6 characters.');
       return;
     }
@@ -55,6 +55,9 @@ export default function Login() {
       }
     >
       <Field label="Email" icon={Mail} value={email} onChangeText={setEmail} placeholder="you@example.com" keyboardType="email-address" autoCapitalize="none" />
+      <ContactInfoHint>
+        Use the valid email address you registered with. You may need access to it for future account verification and recovery.
+      </ContactInfoHint>
       <Field label="Password" icon={Lock} value={password} onChangeText={setPassword} placeholder="Your password" secure />
       <Pressable onPress={() => router.push('/forgot-password')} style={{ alignSelf: 'flex-end' }}>
         <Text style={{ color: colors.primary, fontWeight: '600' }}>Forgot password?</Text>

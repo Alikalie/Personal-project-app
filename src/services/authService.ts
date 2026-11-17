@@ -5,6 +5,7 @@ import Constants from 'expo-constants';
 import type { AuthUser } from '../components/AuthProvider';
 import { friendlyErrorMessage } from '../lib/errors';
 import { passwordPolicyError } from '../lib/passwordPolicy';
+import { isValidEmailAddress, isValidPhoneNumber, normalizeEmailAddress } from '../lib/contactValidation';
 import { supabase } from '../lib/supabase';
 import { acceptSignupConsentIfPending, rememberSignupConsent } from '@/services/legalService';
 
@@ -59,8 +60,13 @@ export async function signUpWithPassword(
 ): Promise<boolean> {
   const passwordError = passwordPolicyError(password);
   if (passwordError) throw new Error(passwordError);
+  const email = normalizeEmailAddress(user.email);
+  if (!isValidEmailAddress(email)) throw new Error('Enter a valid email address.');
+  if (user.phone !== undefined && !isValidPhoneNumber(user.phone)) {
+    throw new Error('Enter a valid phone number with 8 to 15 digits.');
+  }
   const { data, error } = await supabase.auth.signUp({
-    email: user.email,
+    email,
     password,
     options: {
       data: {
@@ -119,7 +125,7 @@ export async function loadAuthUser(user: User): Promise<AuthUser> {
     const [businessResult, membershipResult] = await Promise.all([
       supabase
       .from('businesses')
-      .select('name, business_code, business_type, address, district, phone, created_at, logo_path, receipt_header, receipt_footer, show_logo_on_receipt, notify_low_stock, currency_code')
+      .select('name, business_code, business_type, address, district, phone, created_at, profile_edit_locked_until, logo_path, receipt_header, receipt_footer, show_logo_on_receipt, notify_low_stock, currency_code')
       .eq('id', businessId)
       .maybeSingle(),
       supabase.from('business_members').select('role').eq('business_id', businessId).eq('user_id', user.id).maybeSingle(),
@@ -137,6 +143,7 @@ export async function loadAuthUser(user: User): Promise<AuthUser> {
       district: typeof row.district === 'string' ? row.district : null,
       phone: typeof row.phone === 'string' ? row.phone : null,
       createdAt: typeof row.created_at === 'string' ? row.created_at : null,
+      profileEditLockedUntil: typeof row.profile_edit_locked_until === 'string' ? row.profile_edit_locked_until : null,
       logoPath: typeof row.logo_path === 'string' ? row.logo_path : null,
       receiptHeader: typeof row.receipt_header === 'string' ? row.receipt_header : null,
       receiptFooter: typeof row.receipt_footer === 'string' ? row.receipt_footer : null,
