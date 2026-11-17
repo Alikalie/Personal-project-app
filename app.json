@@ -42,8 +42,8 @@
         "expo-splash-screen",
         {
           "backgroundColor": "#FFFFFF",
-          "image": "./assets/images/splash-screen.png",
-          "imageWidth": 320
+          "image": "./assets/images/mishop-logo.png",
+          "imageWidth": 180
         }
       ],
       "expo-sharing",

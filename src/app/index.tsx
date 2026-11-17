@@ -55,30 +55,38 @@ export default function Splash() {
     <View style={s.container}>
       <StatusBar style="dark" />
 
-      <View style={[s.circle, { width: 320, height: 320, top: -130, right: -110, opacity: 0.9 }]} />
-      <View style={[s.circle, { width: 220, height: 220, bottom: -90, left: -80, opacity: 0.7 }]} />
+      <View style={[s.circle, { width: 160, height: 160, top: -40, right: -40, opacity: 0.9 }]} />
+      <View style={[s.circle, { width: 120, height: 120, bottom: -50, left: -40, opacity: 0.7 }]} />
 
       <View style={s.center}>
-        <Animated.Image
-          source={require('../../assets/images/sml-logo.png')}
-          style={[s.logo, { opacity: logoOpacity, transform: [{ scale: logoScale }] }]}
-          resizeMode="contain"
-        />
-        <Animated.View style={{ opacity: nameOpacity, transform: [{ translateY: nameY }], alignItems: 'center' }}>
-          <Text style={s.name}>
-            {settings.appName}
-          </Text>
-        </Animated.View>
-        <Animated.Text style={[s.tagline, { opacity: tagOpacity }]}>
-          My Shop, My Records, My Profit
-        </Animated.Text>
+        <View style={s.brandRow}>
+          <Animated.Image
+            source={require('../../assets/images/mishop-icon.png')}
+            style={[s.logo, { opacity: logoOpacity, transform: [{ scale: logoScale }] }]}
+            resizeMode="contain"
+            accessibilityLabel="MiShop logo"
+          />
+          <Animated.View style={[s.brandCopy, { opacity: nameOpacity, transform: [{ translateY: nameY }] }]}>
+            <Text style={s.name}>
+              {settings.appName === 'MiShop' ? (
+                <>
+                  <Text style={s.namePrefix}>Mi</Text>
+                  Shop
+                </>
+              ) : settings.appName}
+            </Text>
+            <Animated.Text style={[s.tagline, { opacity: tagOpacity }]}>
+              My shop. My records. My profit.
+            </Animated.Text>
+          </Animated.View>
+        </View>
       </View>
 
       <Animated.View style={[s.footer, { opacity: footerOpacity }]}>
         <View style={s.track}>
           <Animated.View style={[s.bar, { width: barWidth }]} />
         </View>
-        <Text style={s.small}>Built for Sierra Leone businesses</Text>
+        <Text style={s.small}>Built for shops in Sierra Leone</Text>
       </Animated.View>
 
       {loading ? (
@@ -101,14 +109,17 @@ export default function Splash() {
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.white, alignItems: 'center', justifyContent: 'center' },
   circle: { position: 'absolute', borderRadius: 999, backgroundColor: colors.primaryLight },
-  center: { alignItems: 'center', paddingHorizontal: 32 },
-  logo: { width: 290, height: 193 },
-  name: { marginTop: 4, fontSize: 34, fontWeight: '800', color: colors.primaryDark, letterSpacing: -0.4 },
-  tagline: { marginTop: 8, fontSize: 18, color: colors.textSecondary, letterSpacing: 0.2, textAlign: 'center' },
-  footer: { position: 'absolute', bottom: 32, alignItems: 'center', width: '100%' },
-  track: { width: 132, height: 4, borderRadius: 2, backgroundColor: colors.primaryLight, overflow: 'hidden' },
-  bar: { height: 4, backgroundColor: colors.primary, borderRadius: 2 },
-  small: { marginTop: 14, fontSize: 12, color: colors.textSecondary, letterSpacing: 0.3 },
+  center: { alignItems: 'center', paddingHorizontal: 24 },
+  brandRow: { flexDirection: 'row', alignItems: 'center' },
+  logo: { width: 56, height: 56 },
+  brandCopy: { marginLeft: 8, alignItems: 'flex-start' },
+  name: { fontFamily: 'Inter_800ExtraBold', fontSize: 25, lineHeight: 29, fontWeight: '800', color: colors.primary, letterSpacing: -0.8 },
+  namePrefix: { color: '#0D2747' },
+  tagline: { marginTop: 1, fontSize: 7, lineHeight: 10, color: '#596779', letterSpacing: 0.05 },
+  footer: { position: 'absolute', bottom: 38, alignItems: 'center', width: '100%' },
+  track: { width: 82, height: 2, borderRadius: 1, backgroundColor: colors.primaryLight, overflow: 'hidden' },
+  bar: { height: 2, backgroundColor: colors.primary, borderRadius: 1 },
+  small: { marginTop: 9, fontSize: 8, color: '#596779', letterSpacing: 0.1 },
   sessionState: { position: 'absolute', bottom: 92, alignItems: 'center', paddingHorizontal: 24 },
   sessionText: { marginTop: 6, color: colors.textSecondary, fontSize: 12 },
   sessionError: { color: colors.danger, fontSize: 12, textAlign: 'center' },

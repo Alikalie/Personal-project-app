@@ -192,9 +192,6 @@ async function rpc<T>(
       : {};
     const errorCode = typeof details.code === 'string' ? details.code : 'unknown';
     const databaseMessage = safeAdminErrorMessage(error);
-    if (__DEV__) {
-      safeLogger.warn(`${name} RPC failed (${errorCode}): ${databaseMessage ?? 'Unknown database error.'}`);
-    }
     if (
       missingFunctionFallback !== undefined
       && details.code === 'PGRST202'
@@ -202,6 +199,9 @@ async function rpc<T>(
       && details.message.includes(name)
     ) {
       return missingFunctionFallback;
+    }
+    if (__DEV__) {
+      safeLogger.warn(`${name} RPC failed (${errorCode}): ${databaseMessage ?? 'Unknown database error.'}`);
     }
     if (errorCode === 'PGRST202' || errorCode === 'PGRST203') {
       throw new Error(errorCode === 'PGRST202'
