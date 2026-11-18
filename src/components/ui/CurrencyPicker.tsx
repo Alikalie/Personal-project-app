@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Check, ChevronDown, X } from 'lucide-react-native';
-import { FlatList, Modal, Pressable, SafeAreaView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { FlatList, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { supportedCurrencies, type SupportedCurrency } from '@/lib/currencies';
 import { colors, radius, Spacing, typography } from '@/constants/theme';

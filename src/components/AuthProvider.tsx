@@ -19,6 +19,7 @@ export type AuthUser = {
   business: {
     id: string;
     name: string | null;
+    ownerName: string | null;
     role: string | null;
     businessCode: string | null;
     businessType: string | null;

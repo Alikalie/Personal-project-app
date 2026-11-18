@@ -184,7 +184,7 @@ export default function RepayCustomer() {
           receipt_footer: business?.receiptFooter ?? null,
           show_logo_on_receipt: business?.showLogoOnReceipt ?? false,
         },
-        cashierName: ctx?.name ?? 'Team member',
+        cashierName: business?.ownerName ?? '',
         customerName: customer?.name ?? 'Customer',
         customerPhone: customer?.phone ?? null,
         amountMinor: parsed.amountMinor,

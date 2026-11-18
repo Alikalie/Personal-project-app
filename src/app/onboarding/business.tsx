@@ -23,7 +23,7 @@ export default function BusinessRegistration() {
   };
 
   return (
-    <Screen back title="Register your business" subtitle="Step 1 of 3. Tell us who you are."
+    <Screen back backFallback={() => router.replace('/welcome')} title="Register your business" subtitle="Step 1 of 3. Tell us who you are."
       footer={<Button label="Continue" onPress={next} />}
     >
       <StepDots step={1} />

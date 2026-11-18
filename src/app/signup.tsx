@@ -71,7 +71,7 @@ export default function SignUp() {
     setRequestError('');
     try {
       await refresh();
-      router.replace('/onboarding/business');
+      router.push('/onboarding/business');
     } catch (error) {
       setRequestError(friendlyErrorMessage(error));
     } finally {
@@ -82,7 +82,7 @@ export default function SignUp() {
 
   if (result === 'success') {
     return (
-      <Screen brand title="Account created successfully" subtitle="Your account is ready to set up."
+      <Screen back backFallback={() => router.replace('/welcome')} brand title="Account created successfully" subtitle="Your account is ready to set up."
         footer={<Button label="Continue" onPress={continueToOnboarding} loading={loading} />}
       >
         <View style={{ alignItems: 'center', paddingVertical: 36 }}>
@@ -103,7 +103,7 @@ export default function SignUp() {
 
   if (result === 'confirmation') {
     return (
-      <Screen brand title="Check your email" subtitle={`We sent a confirmation link to ${email.trim().toLowerCase()}.`}
+      <Screen back backFallback={() => router.replace('/welcome')} brand title="Check your email" subtitle={`We sent a confirmation link to ${email.trim().toLowerCase()}.`}
         footer={<Button label="Go to login" onPress={() => router.replace('/login')} />}
       >
         <Text style={{ color: colors.textSecondary, fontSize: 15, lineHeight: 23 }}>
@@ -114,7 +114,7 @@ export default function SignUp() {
   }
 
   return (
-    <Screen back brand title="Create your account" subtitle="Start managing your business in minutes."
+    <Screen back backFallback={() => router.replace('/welcome')} brand title="Create your account" subtitle="Start managing your business in minutes."
       footer={
         <>
           {!!requestError && <Text style={{ color: colors.danger, marginBottom: 12 }}>{requestError}</Text>}

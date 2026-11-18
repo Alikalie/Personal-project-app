@@ -252,7 +252,7 @@ export async function createSale(input: CreateSaleInput): Promise<string> {
   }
 }
 
-export async function getSale(saleId: string): Promise<SaleRecord> {
+export async function getSale(saleId: string, servedByName = ''): Promise<SaleRecord> {
   const { data, error } = await supabase.from('sales')
     .select('id, business_id, customer_id, receipt_no, total_minor, discount_minor, credit_minor, sold_at, sale_items(id, product_id, product_name, quantity, unit_price_minor, line_total_minor), sale_payments(id, method, amount_minor, reference), customer:customers(id, business_id, name, phone)')
     .eq('id', saleId)
@@ -267,7 +267,7 @@ export async function getSale(saleId: string): Promise<SaleRecord> {
     items,
     payments,
     customer: mapCustomer(relation(row.customer)),
-    cashierName: 'Team member',
+    cashierName: servedByName.trim(),
   };
 }
 
@@ -349,8 +349,8 @@ export async function listReceiptSales(
   return { rows, total: count ?? 0 };
 }
 
-export async function getReceiptData(saleId: string): Promise<SaleReceiptData> {
-  const record = await getSale(saleId);
+export async function getReceiptData(saleId: string, servedByName = ''): Promise<SaleReceiptData> {
+  const record = await getSale(saleId, servedByName);
   const { data, error } = await supabase.from('businesses')
     .select('name, address, phone, currency_code, receipt_header, receipt_footer, show_logo_on_receipt, logo_path')
     .eq('id', record.sale.business_id)

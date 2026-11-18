@@ -193,7 +193,7 @@ export default function CustomerProfile() {
           receipt_footer: ctx?.business?.receiptFooter ?? null,
           show_logo_on_receipt: ctx?.business?.showLogoOnReceipt ?? false,
         },
-        cashierName: ctx?.name ?? 'Team member',
+        cashierName: ctx?.business?.ownerName ?? '',
       });
     } catch (receiptError) {
       safeLogger.warn('Could not prepare payment receipt:', receiptError);

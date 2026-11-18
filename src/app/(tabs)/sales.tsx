@@ -229,11 +229,11 @@ export default function Sales() {
             phone: cart.customer.phone ?? null,
           }
           : null,
-        cashierName: ctx?.name ?? 'Team member',
+        cashierName: ctx?.business?.ownerName ?? '',
       };
       let savedSale = fallbackSale;
       try {
-        savedSale = await getSale(savedSaleId);
+        savedSale = await getSale(savedSaleId, ctx?.business?.ownerName ?? '');
       } catch (receiptLoadError) {
         safeLogger.warn('Sale was recorded; using in-memory receipt details:', receiptLoadError);
       }

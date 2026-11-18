@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { FileText } from 'lucide-react-native';
 
 import { ReceiptActions } from '@/components/receipts/ReceiptActions';
+import { useAuth } from '@/components/AuthProvider';
 import { EmptyState, ScreenHeader, Skeleton } from '@/components/ds';
 import { colors, Spacing, typography } from '@/constants/theme';
 import { friendlyErrorMessage } from '@/lib/errors';
@@ -15,12 +16,15 @@ import type { ReceiptData } from '@/lib/receipt/types';
 import { getReceiptData } from '@/services/salesService';
 
 export default function SaleReceiptScreen() {
+  const { ctx, loading: authLoading } = useAuth();
   const { id } = useLocalSearchParams<{ id: string }>();
+  const ownerName = ctx?.business?.ownerName?.trim() ?? '';
   const [data, setData] = useState<ReceiptData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   const load = useCallback(async () => {
+    if (authLoading) return;
     if (!id) {
       setLoading(false);
       setError('This receipt is not available.');
@@ -32,11 +36,11 @@ export default function SaleReceiptScreen() {
     try {
       const cached = await loadReceiptData(`sale/${id}`);
       if (cached?.type === 'sale') {
-        cachedReceipt = cached;
+        cachedReceipt = { ...cached, cashierName: ownerName || null };
         setData(cachedReceipt);
         setLoading(false);
       }
-      const source = await getReceiptData(id);
+      const source = await getReceiptData(id, ownerName);
       const receipt = buildSaleReceiptFromReceiptData(source);
       await saveReceiptData(`sale/${id}`, receipt);
       setData(receipt);
@@ -46,7 +50,7 @@ export default function SaleReceiptScreen() {
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  }, [authLoading, id, ownerName]);
 
   useFocusEffect(useCallback(() => {
     void load();

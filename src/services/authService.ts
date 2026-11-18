@@ -122,20 +122,44 @@ export async function loadAuthUser(user: User): Promise<AuthUser> {
   const businessId = typeof profile?.business_id === 'string' ? profile.business_id : null;
   let business: AuthUser['business'] = null;
   if (businessId) {
-    const [businessResult, membershipResult] = await Promise.all([
+    const [businessResult, membershipResult, ownerMembershipResult] = await Promise.all([
       supabase
       .from('businesses')
       .select('name, business_code, business_type, address, district, phone, created_at, profile_edit_locked_until, logo_path, receipt_header, receipt_footer, show_logo_on_receipt, notify_low_stock, currency_code')
       .eq('id', businessId)
       .maybeSingle(),
       supabase.from('business_members').select('role').eq('business_id', businessId).eq('user_id', user.id).maybeSingle(),
+      supabase.from('business_members').select('user_id').eq('business_id', businessId).eq('role', 'owner').maybeSingle(),
     ]);
     if (businessResult.error) throw businessResult.error;
     if (membershipResult.error) throw membershipResult.error;
+    if (ownerMembershipResult.error) throw ownerMembershipResult.error;
     const row = businessResult.data;
+    const ownerId = typeof ownerMembershipResult.data?.user_id === 'string'
+      ? ownerMembershipResult.data.user_id
+      : null;
+    let ownerName: string | null = null;
+    if (ownerId === user.id) {
+      const ownerProfileName = profile?.full_name;
+      const ownerMetadataName = user.user_metadata.full_name;
+      ownerName = typeof ownerProfileName === 'string' && ownerProfileName.trim()
+        ? ownerProfileName.trim()
+        : typeof ownerMetadataName === 'string' && ownerMetadataName.trim() ? ownerMetadataName.trim() : null;
+    } else if (ownerId) {
+      const { data: ownerProfile, error: ownerProfileError } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('id', ownerId)
+        .maybeSingle();
+      if (ownerProfileError) throw ownerProfileError;
+      ownerName = typeof ownerProfile?.full_name === 'string' && ownerProfile.full_name.trim()
+        ? ownerProfile.full_name.trim()
+        : null;
+    }
     business = row ? {
       id: businessId,
       name: typeof row.name === 'string' ? row.name : null,
+      ownerName,
       role: typeof membershipResult.data?.role === 'string' ? membershipResult.data.role : null,
       businessCode: typeof row.business_code === 'string' ? row.business_code : null,
       businessType: typeof row.business_type === 'string' ? row.business_type : null,

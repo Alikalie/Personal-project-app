@@ -27,7 +27,7 @@ export default function BusinessType() {
   };
 
   return (
-    <Screen back title="What do you sell?" subtitle="Step 2 of 3. Choose the type closest to your business."
+    <Screen back backFallback={() => router.replace('/onboarding/business')} title="What do you sell?" subtitle="Step 2 of 3. Choose the type closest to your business."
       footer={<Button label="Continue" onPress={next} disabled={!selected} />}
     >
       <StepDots step={2} />

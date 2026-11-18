@@ -18,20 +18,35 @@ import { Image } from 'expo-image';
 
 import { colors, radius } from '@/constants/theme';
 
-export function Screen({ children, back, brand, title, subtitle, footer }: {
+export function Screen({ children, back, backFallback, brand, title, subtitle, footer }: {
   children: ReactNode;
   back?: boolean;
+  backFallback?: () => void;
   brand?: boolean;
   title?: string;
   subtitle?: string;
   footer?: ReactNode;
 }) {
+  const handleBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      backFallback?.();
+    }
+  };
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.white }}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={s.screen} keyboardShouldPersistTaps="handled">
           {back && (
-            <Pressable onPress={() => router.back()} style={s.back} hitSlop={12}>
+            <Pressable
+              onPress={handleBack}
+              style={s.back}
+              hitSlop={12}
+              accessibilityRole="button"
+              accessibilityLabel="Go back"
+            >
               <ArrowLeft size={22} color={colors.text} />
             </Pressable>
           )}

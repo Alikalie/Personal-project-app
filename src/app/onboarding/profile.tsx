@@ -77,7 +77,7 @@ export default function BusinessProfile() {
   };
 
   return (
-    <Screen back title="Business profile" subtitle="Step 3 of 3. This appears on your receipts."
+    <Screen back backFallback={() => router.replace('/onboarding/type')} title="Business profile" subtitle="Step 3 of 3. This appears on your receipts."
       footer={
         <>
           {!!error && <Text style={{ color: colors.danger, marginBottom: 12 }}>{error}</Text>}
